@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Alger Music · macOS 交互线框图</title>
+  <link rel="stylesheet" href="wireframe.css">
+  <script src="wireframe.js" defer></script>
+</head>
+<body>
+  <header class="prototype-bar">
+    <div><strong>Alger Music</strong><span>macOS · 交互线框图 02</span></div>
+    <div class="prototype-controls">
+      <label><input id="offline" type="checkbox"> 模拟离线</label>
+      <label>外观 <select id="appearance"><option value="system">跟随系统</option><option value="light">浅色预览</option><option value="dark">深色预览</option></select></label>
+      <button id="notes-button" aria-expanded="false">设计说明</button>
+    </div>
+  </header>
+  <p class="prototype-caption">仅供讨论导航和交互 · 示例数据，不访问真实账号或音乐文件 · 正式界面使用 Swift 原生控件</p>
+  <div class="simulation-tools"><span>原型演示</span><button id="simulate-ended">模拟完整播完当前歌曲</button><button id="simulate-failure">模拟下载失败</button><button id="simulate-restart">模拟重新打开</button><button id="reset-demo">重置示例</button><span id="simulation-status" role="status"></span></div>
+  <div id="app" class="window"></div>
+  <aside id="design-notes" hidden>
+    <h2>第二版交互规则</h2>
+    <ol><li>唯一搜索同时查本地和网络，同一首歌优先本地播放。首页是私人 FM、歌单电台、关注艺人的新作和最近保存的本地歌曲。</li><li>本地歌单只有本地曲目，以 M3U8 保存。远程歌单单独分组，可在设置中显示／隐藏，两组可折叠。</li><li>加号默认加入当前播放的歌单，随后可更改目标。网络歌曲加入本地歌单先下载；临时播放列表可以新建保存。</li><li>完整在线播放一首才累计一次，默认 3 次自动保存，可在头像菜单的设置中调整／关闭。</li><li>下载入口随本次任务出现，完成后显示已下载；重新打开只恢复未完成任务，已完成的曲目仍留在本地资料库。</li></ol>
+    <p>上方按钮模拟播放器与下载事件。示例设置、歌单、播放次数和本地收录情况只存于浏览器；不会修改正式 App 或真实音乐文件。真实账号与推荐接口尚未接入。</p>
+  </aside>
+  <dialog id="action-dialog" aria-labelledby="dialog-title"></dialog>
+  <div id="add-feedback" role="status" aria-live="polite" hidden></div>
+  <div id="notice" role="status" aria-live="polite"></div>
+</body>
+</html>

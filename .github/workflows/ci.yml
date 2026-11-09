@@ -1,0 +1,74 @@
+name: CI
+
+on:
+  push:
+    branches: [main, codex/rust-tauri-macos]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  frontend:
+    name: 前端检查（类型 + 构建 + 播放 / 弹层验收）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: 安装依赖
+        run: bun install --frozen-lockfile
+
+      - name: 类型检查
+        run: bun run typecheck
+
+      - name: 构建前端
+        run: bun run build
+
+      - name: 清理边界验收
+        run: bun run test:cleanup
+
+      - name: 播放核心验收
+        run: bun run test:player
+
+      # 歌单弹层（表单 / 确认框）离线验收：取消不得发出写 IPC
+      - name: 歌单弹层验收
+        run: bun run test:playlist
+
+  rust:
+    name: Rust 检查（fmt / clippy / test）
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri
+
+      - name: 安装 Linux 依赖
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            libwebkit2gtk-4.1-dev \
+            libappindicator3-dev \
+            librsvg2-dev \
+            patchelf \
+            libssl-dev
+
+      - name: 格式检查
+        run: cargo fmt --manifest-path src-tauri/Cargo.toml --check
+
+      - name: Clippy
+        run: cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
+
+      - name: 单元测试
+        run: cargo test --manifest-path src-tauri/Cargo.toml

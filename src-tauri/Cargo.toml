@@ -1,0 +1,91 @@
+[package]
+name = "alger-music"
+version = "5.2.0"
+description = "Alger Music - Rust / Tauri 2 rewrite"
+authors = ["Alger <algerkc@qq.com>"]
+license = "MIT"
+repository = "https://github.com/algerkong/AlgerMusicPlayer"
+edition = "2021"
+rust-version = "1.82"
+
+[lib]
+name = "alger_music_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-dialog = "2"
+tauri-plugin-opener = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "gzip",
+    "brotli",
+    "deflate",
+    "rustls-tls",
+    "charset",
+    "http2",
+    "stream",
+] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "sync", "time"] }
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc", "block-padding"] }
+ecb = { version = "0.1", features = ["alloc", "block-padding"] }
+cipher = { version = "0.4", features = ["alloc", "block-padding"] }
+md-5 = "0.10"
+num-bigint = "0.4"
+num-traits = "0.2"
+base64 = "0.22"
+hex = "0.4"
+rand = "0.8"
+percent-encoding = "2"
+url = "2"
+anyhow = "1"
+thiserror = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+dirs = "5"
+parking_lot = "0.12"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+objc2 = "0.6"
+objc2-app-kit = { version = "0.3", features = ["NSColor", "NSColorSpace"] }
+objc2-foundation = { version = "0.3", features = ["NSString"] }
+
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2 = "0.6"
+objc2-foundation = { version = "0.3", features = ["NSString", "NSURL", "NSError", "NSDate", "NSHTTPCookie", "NSArray", "NSFileManager", "NSPathUtilities"] }
+# UIColor / UITraitCollection：读取 UIKit 系统动态色并按当前 trait 解析为 RGB；
+# objc2-core-foundation：UIColor 的 CGFloat 分量类型。
+objc2-ui-kit = { version = "0.3", features = [
+    "UIApplication",
+    "UIWindow",
+    "UIViewController",
+    "UIColor",
+    "UITraitCollection",
+    "objc2-core-foundation",
+] }
+# iOS 登录必须用 **原生异步** Cookie API：
+# wry 的同步 cookies() / delete_cookie() 会在主线程泵 NSRunLoop，
+# 与 Tao 的 control flow 嵌套 → unimplemented!() panic → SIGABRT 闪退，
+# 详见 src/ios_cookies.rs 的说明。block2 feature 用于构造 completion block。
+objc2-web-kit = { version = "0.3", features = [
+    "WKWebView",
+    "WKWebViewConfiguration",
+    "WKWebsiteDataStore",
+    "WKHTTPCookieStore",
+    "block2",
+] }
+# 直接依赖 block2 才能构造 completion block（与 objc2-web-kit 同一版本族）。
+block2 = "0.6"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+panic = "abort"
+strip = true

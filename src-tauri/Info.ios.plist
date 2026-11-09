@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  iOS 专属 Info.plist 增量（构建时与默认模板合并）。
+
+  - UIBackgroundModes=audio：申请后台音频（WKWebView 续播是否生效属实测项）；
+  - UIFileSharingEnabled + LSSupportsOpeningDocumentsInPlace：
+    让沙盒 Documents/AlgerMusic 中的下载文件在「文件」App 可见、可就近打开；
+  - NSAppTransportSecurity/NSAllowsArbitraryLoadsInWebContent：
+    仅放宽 WKWebView 内容加载的 ATS（个别音源 https 升级失败时仍能播 http）；
+    应用自身的网络请求走 Rust reqwest，不受此键影响；
+  - ITSAppUsesNonExemptEncryption=false：免出口合规申报（仅开发分发，无所谓，但避免提示）。
+-->
+<plist version="1.0">
+  <dict>
+    <key>CFBundleName</key>
+    <string>Alger Music</string>
+    <key>CFBundleDisplayName</key>
+    <string>Alger Music</string>
+    <key>UIBackgroundModes</key>
+    <array>
+      <string>audio</string>
+    </array>
+    <key>UIFileSharingEnabled</key>
+    <true/>
+    <key>LSSupportsOpeningDocumentsInPlace</key>
+    <true/>
+    <key>NSAppTransportSecurity</key>
+    <dict>
+      <key>NSAllowsArbitraryLoadsInWebContent</key>
+      <true/>
+    </dict>
+    <key>ITSAppUsesNonExemptEncryption</key>
+    <false/>
+  </dict>
+</plist>

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "identifier": "com.alger.music.ios",
+  "app": {
+    "windows": [
+      {
+        "label": "main",
+        "title": "Alger Music",
+        "resizable": true
+      }
+    ]
+  },
+  "bundle": {
+    "iOS": {
+      "developmentTeam": "9SVGN86A32",
+      "minimumSystemVersion": "16.0"
+    }
+  }
+}

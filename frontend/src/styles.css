@@ -1,0 +1,607 @@
+/**
+ * 配色方案。
+ *
+ * - 浅色 / 深色跟随系统（`prefers-color-scheme`），运行时自动切换；
+ * - 强调色 `--accent` 默认取系统蓝，由后端桥接系统 accent color 后覆盖。
+ */
+
+:root {
+  color-scheme: light dark;
+
+  /* 系统强调色（后端桥接后会覆盖这里的默认值） */
+  --accent: #2f6feb;
+  --accent-rgb: 47 111 235;
+
+  --bg: #f1f3f6;
+  --bg-soft: #ffffff;
+  --bg-card: #ffffff;
+  --bg-hover: rgba(15, 23, 42, 0.05);
+  --border: #e2e6ec;
+  --text: #1b1f26;
+  --muted: #667085;
+  --ok: #1a7f45;
+  --warn: #a15c07;
+  --danger: #c8281d;
+  --shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #0f1115;
+    --bg-soft: #161a21;
+    --bg-card: #1b2029;
+    --bg-hover: rgba(255, 255, 255, 0.06);
+    --border: #262d38;
+    --text: #e6e9ef;
+    --muted: #8b95a5;
+    --ok: #3fb950;
+    --warn: #d29922;
+    --danger: #ff6b6b;
+    --shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+  background: var(--bg);
+  color: var(--text);
+  font-family: -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 14px;
+  overflow: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+#app {
+  height: 100vh;
+}
+
+.layout {
+  display: grid;
+  grid-template-columns: 248px 1fr;
+  grid-template-rows: 1fr 76px;
+  grid-template-areas:
+    'sidebar main'
+    'player player';
+  height: 100vh;
+}
+
+.sidebar {
+  grid-area: sidebar;
+  background: var(--bg-soft);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.brand {
+  padding: 18px 16px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.brand-title {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+}
+
+.nav .btn {
+  justify-content: flex-start;
+  background: transparent;
+  border-color: transparent;
+  color: var(--muted);
+}
+
+.nav .btn:hover {
+  background: var(--bg-card);
+  color: var(--text);
+}
+
+.nav .btn.nav-active {
+  background: rgb(var(--accent-rgb) / 0.16);
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.side-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 16px 4px;
+  border-top: 1px solid var(--border);
+  margin-top: 6px;
+}
+
+.playlist-list {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px 12px;
+}
+
+.side-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  padding: 7px 10px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  font-size: 13px;
+}
+
+.side-item:hover {
+  background: var(--bg-hover);
+}
+
+.side-item-active {
+  background: rgb(var(--accent-rgb) / 0.16);
+  color: var(--accent);
+}
+
+.side-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* 我的歌单概览（正文区里的歌单列表）：
+   窄屏下侧栏歌单列表被隐藏，正文区承担选歌单的入口（只读）。 */
+.playlist-overview-list {
+  padding: 6px;
+}
+
+.playlist-overview-list .side-item {
+  padding: 9px 10px;
+  font-size: 14px;
+}
+
+.account-box {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border);
+}
+
+.main {
+  grid-area: main;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  background: var(--bg-soft);
+}
+
+.view-root {
+  flex: 1;
+  overflow-y: auto;
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.view-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.player-bar {
+  grid-area: player;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 0 18px;
+  background: var(--bg-soft);
+  border-top: 1px solid var(--border);
+}
+
+.player-info {
+  min-width: 200px;
+  max-width: 280px;
+}
+
+.player-time {
+  min-width: 96px;
+  text-align: center;
+}
+
+.player-controls {
+  display: flex;
+  gap: 8px;
+}
+
+.progress {
+  flex: 1;
+  min-width: 120px;
+  accent-color: var(--accent);
+}
+
+.volume {
+  width: 90px;
+  accent-color: var(--accent);
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 16px;
+}
+
+.login-card {
+  max-width: 640px;
+  margin: 24px auto;
+}
+
+.detail-head {
+  display: flex;
+  gap: 18px;
+  align-items: flex-start;
+}
+
+.detail-meta {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cover {
+  width: 132px;
+  height: 132px;
+  border-radius: 8px;
+  background: var(--bg);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  flex-shrink: 0;
+  color: var(--muted);
+}
+
+.cover img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.song-list {
+  padding: 6px;
+}
+
+.song-row {
+  display: grid;
+  /* 序号 / 信息 / 时长 / 操作（歌单与搜索行都是只读，没有多选列） */
+  grid-template-columns: 44px minmax(0, 1fr) 56px auto;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 8px;
+  border-radius: 6px;
+}
+
+.song-row:hover {
+  background: var(--bg-hover);
+}
+
+.song-index {
+  color: var(--muted);
+  font-size: 12px;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.song-info {
+  min-width: 0;
+}
+
+.song-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.song-path {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  max-width: 260px;
+}
+
+.row {
+  display: flex;
+  align-items: center;
+}
+
+.row.gap {
+  gap: 8px;
+}
+
+.row.wrap {
+  flex-wrap: wrap;
+}
+
+.grow {
+  flex: 1;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg-card);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.btn:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.btn:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+.btn-primary {
+  background: var(--accent);
+  border-color: var(--accent);
+  color: #fff;
+}
+
+.btn-primary:hover {
+  background: var(--accent);
+  border-color: var(--accent);
+  filter: brightness(1.08);
+}
+
+.btn-icon {
+  padding: 6px;
+  min-width: 30px;
+}
+
+.btn .icon {
+  flex: none;
+  display: block;
+}
+
+.input {
+  padding: 7px 10px;
+  border-radius: 6px;
+  border: 1px solid var(--border);
+  background: var(--bg);
+  color: var(--text);
+  font-size: 13px;
+  outline: none;
+  min-width: 0;
+}
+
+.input:focus {
+  border-color: var(--accent);
+}
+
+.textarea {
+  width: 100%;
+  resize: vertical;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+
+.search-bar .input {
+  flex: 1;
+}
+
+.muted {
+  color: var(--muted);
+}
+
+.small {
+  font-size: 12px;
+}
+
+.pad {
+  padding: 12px;
+}
+
+.error {
+  color: var(--danger);
+}
+
+.hr,
+hr {
+  border: none;
+  border-top: 1px solid var(--border);
+  margin: 16px 0;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.field-label {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.checkbox-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px 18px;
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.login-status {
+  margin: 10px 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: var(--bg);
+  border: 1px solid var(--border);
+}
+
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+}
+
+.modal {
+  width: min(520px, 92vw);
+  max-height: 86vh;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+/* ---- 应用内表单 / 确认弹层（替代 window.prompt / window.confirm） ----
+   wry 没有 JS prompt，弹层必须是应用内的 HTML 表单；
+   配色全部走 CSS 变量，因此跟随系统浅色 / 深色主题。 */
+
+.modal-title {
+  margin: 0;
+  font-size: 15px;
+}
+
+.modal-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.modal-field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.modal-field .input {
+  width: 100%;
+}
+
+.modal-message {
+  margin: 0;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.modal-error {
+  margin: 0;
+  min-height: 16px;
+  font-size: 12px;
+  color: var(--danger);
+}
+
+.modal-error:empty {
+  display: none;
+}
+
+.modal-actions {
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* 弹层按钮保持触摸目标尺寸（Apple HIG ≥44px） */
+.modal-actions .btn {
+  min-height: 44px;
+  padding: 10px 18px;
+  font-size: 14px;
+}
+
+.toast-host {
+  position: fixed;
+  right: 18px;
+  bottom: 92px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  z-index: 100;
+  max-width: 420px;
+}
+
+.toast {
+  padding: 10px 14px;
+  border-radius: 8px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  color: var(--text);
+  font-size: 13px;
+  box-shadow: var(--shadow);
+  transition: opacity 0.25s ease, transform 0.25s ease;
+}
+
+.toast-error {
+  border-color: var(--danger);
+  color: var(--danger);
+}
+
+.toast-success {
+  border-color: var(--ok);
+  color: var(--ok);
+}
+
+.toast-out {
+  opacity: 0;
+  transform: translateY(6px);
+}
+
+::-webkit-scrollbar {
+  width: 9px;
+  height: 9px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}

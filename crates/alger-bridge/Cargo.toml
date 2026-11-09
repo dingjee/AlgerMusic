@@ -1,0 +1,26 @@
+[package]
+name = "alger-bridge"
+version = "5.2.0"
+edition = "2021"
+rust-version = "1.82"
+description = "Alger Music 原生 macOS 桥接进程：stdin/stdout JSON 行协议"
+license = "MIT"
+
+[[bin]]
+name = "alger-bridge"
+path = "src/main.rs"
+
+[dependencies]
+alger-core = { path = "../alger-core" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "io-std", "io-util", "sync", "time"] }
+parking_lot = "0.12"
+base64 = "0.22"
+
+[profile.release]
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true
+panic = "abort"

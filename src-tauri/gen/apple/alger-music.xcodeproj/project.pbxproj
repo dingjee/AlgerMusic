@@ -1,0 +1,533 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		1996F8607EBE8674DCB8434B /* MetalKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = F3BBAC43C361684BB303475F /* MetalKit.framework */; };
+		35F539A28EDCA499C2085804 /* libapp.a in Frameworks */ = {isa = PBXBuildFile; fileRef = C2F6BC0DF91BA861296F8B45 /* libapp.a */; };
+		407D54760F8A3857B4D9E50A /* UIKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 12F1099AF2E9329DE3F84D10 /* UIKit.framework */; };
+		5DF0B58633C36D3DD72A5FF0 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 676DF2DF29FABF9462FD67CB /* Assets.xcassets */; };
+		60D0879AA399346DC0960E94 /* main.mm in Sources */ = {isa = PBXBuildFile; fileRef = 0ED1E2ABC8C031C8E011477B /* main.mm */; };
+		65730476D38E497828D4E1D7 /* Metal.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2D5184334B1EA1F4461E91A9 /* Metal.framework */; };
+		6887413FB3EEA6F0612A76F2 /* Security.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 5CB01427C9E1774062B9492A /* Security.framework */; };
+		9BB59360D8C4BD698E2FEC0B /* CoreGraphics.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = DF490F5A6E6A30C7D7B1DE0C /* CoreGraphics.framework */; };
+		9FE45FE2CA512A960AC68C82 /* QuartzCore.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = D8A954F0EA65385188861262 /* QuartzCore.framework */; };
+		B69C7E7F1BA0A383B0CBD174 /* WebKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 55210DCB782EE3C518684976 /* WebKit.framework */; };
+		DCFE79FFE9D6E67E2F0E7AFD /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = C2A5A3851A264B0752C71C0A /* LaunchScreen.storyboard */; };
+		FF791553A20E6437A70750BD /* assets in Resources */ = {isa = PBXBuildFile; fileRef = F917C6CC1FB29D1B2B8E2244 /* assets */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXFileReference section */
+		0D4B6EA4FFE500AAF10CE69C /* client.rs */ = {isa = PBXFileReference; path = client.rs; sourceTree = "<group>"; };
+		0ED1E2ABC8C031C8E011477B /* main.mm */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.objcpp; path = main.mm; sourceTree = "<group>"; };
+		12F1099AF2E9329DE3F84D10 /* UIKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = UIKit.framework; path = System/Library/Frameworks/UIKit.framework; sourceTree = SDKROOT; };
+		14A5E6D71C5BE1DF28386849 /* lib.rs */ = {isa = PBXFileReference; path = lib.rs; sourceTree = "<group>"; };
+		1527E64A54646C48F96D3EF7 /* theme.rs */ = {isa = PBXFileReference; path = theme.rs; sourceTree = "<group>"; };
+		1767BE32BB0048F0873AE612 /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		2D5184334B1EA1F4461E91A9 /* Metal.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Metal.framework; path = System/Library/Frameworks/Metal.framework; sourceTree = SDKROOT; };
+		3C4778C62A338F68FA1A5CE4 /* cookie.rs */ = {isa = PBXFileReference; path = cookie.rs; sourceTree = "<group>"; };
+		48C090AF379EF3D5BC135D71 /* state.rs */ = {isa = PBXFileReference; path = state.rs; sourceTree = "<group>"; };
+		49069C7F5170D807E8FAFDDC /* session.rs */ = {isa = PBXFileReference; path = session.rs; sourceTree = "<group>"; };
+		530320FA59F85E2D8896CD41 /* kwdes.rs */ = {isa = PBXFileReference; path = kwdes.rs; sourceTree = "<group>"; };
+		55210DCB782EE3C518684976 /* WebKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WebKit.framework; path = System/Library/Frameworks/WebKit.framework; sourceTree = SDKROOT; };
+		584F2F4BBBAFCA5D7B32CAE2 /* alger-music_iOS.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = "alger-music_iOS.app"; sourceTree = BUILT_PRODUCTS_DIR; };
+		5CB01427C9E1774062B9492A /* Security.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Security.framework; path = System/Library/Frameworks/Security.framework; sourceTree = SDKROOT; };
+		5E37FD9B9C5A9C12FC0E594C /* mod.rs */ = {isa = PBXFileReference; path = mod.rs; sourceTree = "<group>"; };
+		62488B20DC5B0F43825FD1CC /* api.rs */ = {isa = PBXFileReference; path = api.rs; sourceTree = "<group>"; };
+		676DF2DF29FABF9462FD67CB /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		69D56F7EAF7A084B60D45ECF /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		6F31CE050DF0EF9F90C7509B /* alger-music_iOS.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = "alger-music_iOS.entitlements"; sourceTree = "<group>"; };
+		7698B847D031A9D62DE97CD5 /* bindings.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = bindings.h; sourceTree = "<group>"; };
+		89EB80AF08F545DE33F99090 /* models.rs */ = {isa = PBXFileReference; path = models.rs; sourceTree = "<group>"; };
+		9741177AE4B036EC85B89A34 /* main.rs */ = {isa = PBXFileReference; path = main.rs; sourceTree = "<group>"; };
+		9C8A5CE1AD91C40262726414 /* login.rs */ = {isa = PBXFileReference; path = login.rs; sourceTree = "<group>"; };
+		AEA5902117A15C0ACFE64166 /* migu.rs */ = {isa = PBXFileReference; path = migu.rs; sourceTree = "<group>"; };
+		BC96612A2AD26F1FCC4D1425 /* kuwo.rs */ = {isa = PBXFileReference; path = kuwo.rs; sourceTree = "<group>"; };
+		C2A5A3851A264B0752C71C0A /* LaunchScreen.storyboard */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; path = LaunchScreen.storyboard; sourceTree = "<group>"; };
+		C2F6BC0DF91BA861296F8B45 /* libapp.a */ = {isa = PBXFileReference; lastKnownFileType = archive.ar; path = libapp.a; sourceTree = "<group>"; };
+		C5071F764ACF81F59C71F8C5 /* commands.rs */ = {isa = PBXFileReference; path = commands.rs; sourceTree = "<group>"; };
+		CABBDF9598FA7D63EEB3C6F1 /* probe.rs */ = {isa = PBXFileReference; path = probe.rs; sourceTree = "<group>"; };
+		D7EF87EC3DA3FA249669C8D0 /* download.rs */ = {isa = PBXFileReference; path = download.rs; sourceTree = "<group>"; };
+		D8A954F0EA65385188861262 /* QuartzCore.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = QuartzCore.framework; path = System/Library/Frameworks/QuartzCore.framework; sourceTree = SDKROOT; };
+		DF490F5A6E6A30C7D7B1DE0C /* CoreGraphics.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = CoreGraphics.framework; path = System/Library/Frameworks/CoreGraphics.framework; sourceTree = SDKROOT; };
+		EA70ED81CA6214F3C8451AC2 /* kugou.rs */ = {isa = PBXFileReference; path = kugou.rs; sourceTree = "<group>"; };
+		EB2DAAE9165FCF50F2932008 /* gdstudio.rs */ = {isa = PBXFileReference; path = gdstudio.rs; sourceTree = "<group>"; };
+		F3BBAC43C361684BB303475F /* MetalKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = MetalKit.framework; path = System/Library/Frameworks/MetalKit.framework; sourceTree = SDKROOT; };
+		F917C6CC1FB29D1B2B8E2244 /* assets */ = {isa = PBXFileReference; lastKnownFileType = folder; path = assets; sourceTree = SOURCE_ROOT; };
+		FC288BAB09DAF34458AC2000 /* crypto.rs */ = {isa = PBXFileReference; path = crypto.rs; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		25956E67B97C354D55ABE653 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				35F539A28EDCA499C2085804 /* libapp.a in Frameworks */,
+				9BB59360D8C4BD698E2FEC0B /* CoreGraphics.framework in Frameworks */,
+				65730476D38E497828D4E1D7 /* Metal.framework in Frameworks */,
+				1996F8607EBE8674DCB8434B /* MetalKit.framework in Frameworks */,
+				9FE45FE2CA512A960AC68C82 /* QuartzCore.framework in Frameworks */,
+				6887413FB3EEA6F0612A76F2 /* Security.framework in Frameworks */,
+				407D54760F8A3857B4D9E50A /* UIKit.framework in Frameworks */,
+				B69C7E7F1BA0A383B0CBD174 /* WebKit.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		02A3898610685222903A2E55 /* bindings */ = {
+			isa = PBXGroup;
+			children = (
+				7698B847D031A9D62DE97CD5 /* bindings.h */,
+			);
+			path = bindings;
+			sourceTree = "<group>";
+		};
+		03794D7070F9917D66F8C9EC /* netease */ = {
+			isa = PBXGroup;
+			children = (
+				62488B20DC5B0F43825FD1CC /* api.rs */,
+				0D4B6EA4FFE500AAF10CE69C /* client.rs */,
+				5E37FD9B9C5A9C12FC0E594C /* mod.rs */,
+				89EB80AF08F545DE33F99090 /* models.rs */,
+			);
+			path = netease;
+			sourceTree = "<group>";
+		};
+		33A72A0EB4B2113EBE3BD2D9 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				DF490F5A6E6A30C7D7B1DE0C /* CoreGraphics.framework */,
+				C2F6BC0DF91BA861296F8B45 /* libapp.a */,
+				2D5184334B1EA1F4461E91A9 /* Metal.framework */,
+				F3BBAC43C361684BB303475F /* MetalKit.framework */,
+				D8A954F0EA65385188861262 /* QuartzCore.framework */,
+				5CB01427C9E1774062B9492A /* Security.framework */,
+				12F1099AF2E9329DE3F84D10 /* UIKit.framework */,
+				55210DCB782EE3C518684976 /* WebKit.framework */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
+		45A266F4664A8B97ABB222E1 /* sources */ = {
+			isa = PBXGroup;
+			children = (
+				EB2DAAE9165FCF50F2932008 /* gdstudio.rs */,
+				EA70ED81CA6214F3C8451AC2 /* kugou.rs */,
+				BC96612A2AD26F1FCC4D1425 /* kuwo.rs */,
+				530320FA59F85E2D8896CD41 /* kwdes.rs */,
+				AEA5902117A15C0ACFE64166 /* migu.rs */,
+				1767BE32BB0048F0873AE612 /* mod.rs */,
+				CABBDF9598FA7D63EEB3C6F1 /* probe.rs */,
+			);
+			path = sources;
+			sourceTree = "<group>";
+		};
+		7C33DCEA0AD06E54CAAD8C85 /* Sources */ = {
+			isa = PBXGroup;
+			children = (
+				8846A15EAF9CA91710A097FB /* alger-music */,
+			);
+			path = Sources;
+			sourceTree = "<group>";
+		};
+		8387E5D8F44A9B776A7F1871 = {
+			isa = PBXGroup;
+			children = (
+				F917C6CC1FB29D1B2B8E2244 /* assets */,
+				676DF2DF29FABF9462FD67CB /* Assets.xcassets */,
+				C2A5A3851A264B0752C71C0A /* LaunchScreen.storyboard */,
+				99B13C30F87FFD566AF63564 /* alger-music_iOS */,
+				C55D1304077960FD8F38647D /* Externals */,
+				7C33DCEA0AD06E54CAAD8C85 /* Sources */,
+				FEE221183192C2F63E6DFA40 /* src */,
+				33A72A0EB4B2113EBE3BD2D9 /* Frameworks */,
+				943884CA715862E08F8121D6 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		8846A15EAF9CA91710A097FB /* alger-music */ = {
+			isa = PBXGroup;
+			children = (
+				0ED1E2ABC8C031C8E011477B /* main.mm */,
+				02A3898610685222903A2E55 /* bindings */,
+			);
+			path = "alger-music";
+			sourceTree = "<group>";
+		};
+		943884CA715862E08F8121D6 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				584F2F4BBBAFCA5D7B32CAE2 /* alger-music_iOS.app */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		99B13C30F87FFD566AF63564 /* alger-music_iOS */ = {
+			isa = PBXGroup;
+			children = (
+				6F31CE050DF0EF9F90C7509B /* alger-music_iOS.entitlements */,
+				69D56F7EAF7A084B60D45ECF /* Info.plist */,
+			);
+			path = "alger-music_iOS";
+			sourceTree = "<group>";
+		};
+		C55D1304077960FD8F38647D /* Externals */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = Externals;
+			sourceTree = "<group>";
+		};
+		FEE221183192C2F63E6DFA40 /* src */ = {
+			isa = PBXGroup;
+			children = (
+				C5071F764ACF81F59C71F8C5 /* commands.rs */,
+				3C4778C62A338F68FA1A5CE4 /* cookie.rs */,
+				FC288BAB09DAF34458AC2000 /* crypto.rs */,
+				D7EF87EC3DA3FA249669C8D0 /* download.rs */,
+				14A5E6D71C5BE1DF28386849 /* lib.rs */,
+				9C8A5CE1AD91C40262726414 /* login.rs */,
+				9741177AE4B036EC85B89A34 /* main.rs */,
+				49069C7F5170D807E8FAFDDC /* session.rs */,
+				48C090AF379EF3D5BC135D71 /* state.rs */,
+				1527E64A54646C48F96D3EF7 /* theme.rs */,
+				03794D7070F9917D66F8C9EC /* netease */,
+				45A266F4664A8B97ABB222E1 /* sources */,
+			);
+			name = src;
+			path = ../../src;
+			sourceTree = "<group>";
+		};
+		"TEMP_A47937C6-0943-4E2B-8969-AC648E5E2B05" /* arm64 */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = arm64;
+			sourceTree = "<group>";
+		};
+		"TEMP_B071A728-E558-41EF-A4D3-AA0D2D8655E9" /* x86_64 */ = {
+			isa = PBXGroup;
+			children = (
+			);
+			path = x86_64;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		9A5AB5D49CF72C7998C88918 /* alger-music_iOS */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = BEE1DA0806F9BBD04B6B6881 /* Build configuration list for PBXNativeTarget "alger-music_iOS" */;
+			buildPhases = (
+				D12118BE4E9EA0C3BB5044C1 /* Build Rust Code */,
+				C6D6B1425F5D5D52177B1FF5 /* Sources */,
+				22B04CE30137203C3C3D26CA /* Resources */,
+				25956E67B97C354D55ABE653 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = "alger-music_iOS";
+			packageProductDependencies = (
+			);
+			productName = "alger-music_iOS";
+			productReference = 584F2F4BBBAFCA5D7B32CAE2 /* alger-music_iOS.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		180D835F9F4F15E128AB0555 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+					9A5AB5D49CF72C7998C88918 = {
+						DevelopmentTeam = 9SVGN86A32;
+					};
+				};
+			};
+			buildConfigurationList = 1E61DF2579B1FE73DDBC9568 /* Build configuration list for PBXProject "alger-music" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+			);
+			mainGroup = 8387E5D8F44A9B776A7F1871;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 943884CA715862E08F8121D6 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				9A5AB5D49CF72C7998C88918 /* alger-music_iOS */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		22B04CE30137203C3C3D26CA /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				5DF0B58633C36D3DD72A5FF0 /* Assets.xcassets in Resources */,
+				DCFE79FFE9D6E67E2F0E7AFD /* LaunchScreen.storyboard in Resources */,
+				FF791553A20E6437A70750BD /* assets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		D12118BE4E9EA0C3BB5044C1 /* Build Rust Code */ = {
+			isa = PBXShellScriptBuildPhase;
+			alwaysOutOfDate = 1;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			name = "Build Rust Code";
+			outputFileListPaths = (
+			);
+			outputPaths = (
+				"$(SRCROOT)/Externals/x86_64/${CONFIGURATION}/libapp.a",
+				"$(SRCROOT)/Externals/arm64/${CONFIGURATION}/libapp.a",
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "\"${SRCROOT}/../../../scripts/xcode-build-rust.sh\" -v --platform \"${PLATFORM_DISPLAY_NAME:?}\" --sdk-root \"${SDKROOT:?}\" --framework-search-paths \"${FRAMEWORK_SEARCH_PATHS:?}\" --header-search-paths \"${HEADER_SEARCH_PATHS:?}\" --gcc-preprocessor-definitions \"${GCC_PREPROCESSOR_DEFINITIONS:-}\" --configuration \"${CONFIGURATION:?}\" ${FORCE_COLOR} ${ARCHS:?}\n";
+		};
+/* End PBXShellScriptBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		C6D6B1425F5D5D52177B1FF5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				60D0879AA399346DC0960E94 /* main.mm in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin XCBuildConfiguration section */
+		01F7F2029DAB12097E407DB2 /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = release;
+		};
+		0B37D2CFA97807D4D25E42FE /* release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "alger-music_iOS/alger-music_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "9SVGN86A32";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "alger-music_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.alger.music.ios;
+				PRODUCT_NAME = "AlgerMusicPlayer";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = release;
+		};
+		CA11FF756DEB907A2F933C99 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_EMBED_SWIFT_STANDARD_LIBRARIES = YES;
+				ARCHS = (
+					arm64,
+				);
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = "alger-music_iOS/alger-music_iOS.entitlements";
+				CODE_SIGN_IDENTITY = "iPhone Developer";
+				DEVELOPMENT_TEAM = "9SVGN86A32";
+				ENABLE_BITCODE = NO;
+				"EXCLUDED_ARCHS[sdk=iphoneos*]" = x86_64;
+				FRAMEWORK_SEARCH_PATHS = (
+					"$(inherited)",
+					"\".\"",
+				);
+				INFOPLIST_FILE = "alger-music_iOS/Info.plist";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+				);
+				"LIBRARY_SEARCH_PATHS[arch=arm64]" = "$(inherited) $(PROJECT_DIR)/Externals/arm64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				"LIBRARY_SEARCH_PATHS[arch=x86_64]" = "$(inherited) $(PROJECT_DIR)/Externals/x86_64/$(CONFIGURATION) $(SDKROOT)/usr/lib/swift $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift/$(PLATFORM_NAME) $(DEVELOPER_DIR)/Toolchains/XcodeDefault.xctoolchain/usr/lib/swift-5.0/$(PLATFORM_NAME)";
+				PRODUCT_BUNDLE_IDENTIFIER = com.alger.music.ios;
+				PRODUCT_NAME = "AlgerMusicPlayer";
+				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALID_ARCHS = arm64;
+			};
+			name = debug;
+		};
+		F13BE7EFB22626EE62B36A79 /* debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1E61DF2579B1FE73DDBC9568 /* Build configuration list for PBXProject "alger-music" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				F13BE7EFB22626EE62B36A79 /* debug */,
+				01F7F2029DAB12097E407DB2 /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+		BEE1DA0806F9BBD04B6B6881 /* Build configuration list for PBXNativeTarget "alger-music_iOS" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				CA11FF756DEB907A2F933C99 /* debug */,
+				0B37D2CFA97807D4D25E42FE /* release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = 180D835F9F4F15E128AB0555 /* Project object */;
+}

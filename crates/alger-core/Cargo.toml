@@ -1,0 +1,50 @@
+[package]
+name = "alger-core"
+version = "5.2.0"
+edition = "2021"
+rust-version = "1.82"
+description = "Alger Music 原生 macOS 核心库：复用 src-tauri 纯模块 + 本地索引 / 标签 / 下载队列"
+license = "MIT"
+
+[lib]
+name = "alger_core"
+
+[dependencies]
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+reqwest = { version = "0.12", default-features = false, features = [
+    "json",
+    "gzip",
+    "brotli",
+    "deflate",
+    "rustls-tls",
+    "charset",
+    "http2",
+    "stream",
+] }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "fs", "sync", "time", "process", "io-util"] }
+aes = "0.8"
+cbc = { version = "0.1", features = ["alloc", "block-padding"] }
+ecb = { version = "0.1", features = ["alloc", "block-padding"] }
+cipher = { version = "0.4", features = ["alloc", "block-padding"] }
+md-5 = "0.10"
+num-bigint = "0.4"
+num-traits = "0.2"
+base64 = "0.22"
+hex = "0.4"
+rand = "0.8"
+percent-encoding = "2"
+url = "2"
+anyhow = "1"
+thiserror = "1"
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
+dirs = "5"
+parking_lot = "0.12"
+futures-util = { version = "0.3", default-features = false, features = ["std"] }
+# 音频标签读写（ID3v2 / Vorbis Comment / MP4 ilst / AIFF ID3），纯 Rust。
+lofty = "0.22"
+
+[target.'cfg(unix)'.dependencies]
+# 下载队列跨进程互斥（flock）：stat 比较 + rename 不是跨进程事务，
+# 两实例可同时通过检查互相覆盖；必须持有真实文件锁后再检查再写。
+libc = "0.2"

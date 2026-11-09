@@ -1,34 +1,51 @@
-node_modules
+# 依赖与构建产物
+node_modules/
+dist/
+dist-ssr/
+out/
+*.tsbuildinfo
+
+# Rust / Tauri 构建产物
+src-tauri/target/
+src-tauri/gen/schemas/
+# 原生桥接 / 核心 crate 的独立构建目录（Package.resolved / Cargo.lock 入库保留）
+crates/alger-core/target/
+crates/alger-bridge/target/
+# SwiftPM 原生端构建目录（Package.resolved 入库保留）
+native/macos/.build/
+
+# Tauri iOS 生成工程：工程配置 / 源码 / assets 入库，
+# 仅忽略构建产物与缓存（libapp.a、CocoaPods、DerivedData 等）
+src-tauri/gen/apple/Externals/
+src-tauri/gen/apple/Pods/
+src-tauri/gen/apple/DerivedData/
+src-tauri/gen/apple/build/
+
+# 本地迁移工具链（rustup / cargo 等，不入库）
+.tools/
+
+# 锁文件：使用 bun，提交 bun.lock 保证可复现
+bun.lockb
+!bun.lock
+
+# 长期试用安装目录：install-dist.sh 维护，本地保留，不参与清理
+/dist/
+
+# 系统与编辑器
 .DS_Store
-
-dist
-dist-ssr
+.idea/
+.vscode/
 *.local
-dist_electron
-.idea
-
-# lock
-yarn.lock
-pnpm-lock.yaml
-package-lock.json
 dist.zip
 
-.vscode
-
-bun.lockb
-bun.lock
-
+# 环境变量
+.env
 .env.*.local
 
-out
-
-.cursorrules
-
+# 私密目录 / 工具配置
 .github/deploy_keys
-
-resources/android/**/*
-android/app/release
-
+docs/private/
+.cursorrules
 .cursor
 .windsurf
 .agent
@@ -38,20 +55,7 @@ android/app/release
 CLAUDE.md
 AGENTS.md
 .sisyphus
-
 .worktrees
 
-
-
-.auto-imports.d.ts
-.components.d.ts
-
-# TypeScript 增量编译缓存
-*.tsbuildinfo
-
-src/renderer/auto-imports.d.ts
-src/renderer/components.d.ts
-
-# 内部整理记录，不进公开仓库
-docs/private/
-docs/private/
+# Disposable task documents, logs, screenshots and isolated test outputs
+/.artifacts/

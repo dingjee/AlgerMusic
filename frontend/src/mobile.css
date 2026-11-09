@@ -1,0 +1,331 @@
+/**
+ * 移动端布局（iOS / 窄屏）。
+ *
+ * 桌面布局保持 `styles.css` 不变；这里只在窄屏（≤900px，覆盖 iPhone
+ * 竖屏 / 横屏与 iPad 分屏）下接管：
+ * - 侧边栏收成顶部横向导航，歌单列表与账号信息移入内容区；
+ * - 播放条保持贴底，并避开 Home 指示条与刘海安全区；
+ * - 输入框字号 ≥16px，避免 iOS 聚焦时自动放大页面；
+ * - 触摸目标放大到 ≥44px。
+ *
+ * 级联顺序约定（重要）：本文件先写「行结构基础规则」（非媒体查询，
+ * 桌面端生效），再写 @media 窄屏覆盖。媒体查询不提升特异性，
+ * 同名选择器必须让窄屏规则在源码中靠后，否则桌面规则会盖过窄屏规则。
+ */
+
+/* ---- 行结构基础规则（非媒体查询，桌面端同样生效） ----
+   styles.css 的 .song-row 是 4 列网格（序号/信息/时长/操作），
+   只匹配歌单详情行与搜索行。下载行子节点数量不固定，复用该网格会
+   把信息压进 20px 序号列、操作挤进 56px 时长列，因此按行类型
+   （视图标注的 class）给出各自布局。 */
+
+/* 歌单行与搜索行：序号 / 信息 / 时长 / 操作 */
+.song-row--playlist,
+.song-row--search {
+  grid-template-columns: 44px minmax(0, 1fr) 56px auto;
+}
+
+/* 下载行：信息 / 来源·操作 / 路径，flex 自适应 */
+.song-row--download {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+}
+
+.song-row--download .song-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.song-row--download .song-path {
+  margin-left: auto;
+}
+
+/* ---- 布局重排：侧栏 → 顶部条 + 内容区 + 播放条 ---- */
+
+@media (max-width: 900px) {
+  html,
+  body {
+    /* iOS 上 100vh 不含动态浏览器 chrome；App 内 WebView 用 dvh 更稳 */
+    height: 100%;
+  }
+
+  #app,
+  .layout {
+    height: 100dvh;
+  }
+
+  .layout {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto minmax(0, 1fr) auto;
+    grid-template-areas:
+      'sidebar'
+      'main'
+      'player';
+  }
+
+  /* 侧栏变为顶部条：品牌 + 横向导航 */
+  .sidebar {
+    flex-direction: row;
+    align-items: center;
+    gap: 6px;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+    padding: calc(env(safe-area-inset-top, 0px)) 10px 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  .brand {
+    padding: 10px 6px;
+    flex: none;
+  }
+
+  .brand .muted.small {
+    display: none; /* 副标题在顶栏放不下 */
+  }
+
+  .brand-title {
+    font-size: 15px;
+  }
+
+  .nav {
+    flex-direction: row;
+    gap: 2px;
+    padding: 6px 2px;
+  }
+
+  .nav .btn {
+    justify-content: center;
+    padding: 9px 10px;
+    font-size: 13px;
+  }
+
+  /* 歌单下拉与账号盒：顶部条放不下，隐藏（歌单在「我的歌单」视图内浏览） */
+  .side-header,
+  .playlist-list,
+  .account-box {
+    display: none;
+  }
+
+  /* 主区域 */
+  .topbar {
+    padding: 10px 12px;
+    padding-top: 8px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .topbar .input {
+    font-size: 16px; /* ≥16px 防止 iOS 聚焦自动缩放 */
+  }
+
+  .view-root {
+    padding: 12px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* 播放条：贴底 + 安全区 */
+  .player-bar {
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    padding: 8px 12px calc(env(safe-area-inset-bottom, 0px) + 8px);
+  }
+
+  .player-info {
+    flex: 1 1 100%;
+    min-width: 0;
+    max-width: none;
+    order: 3; /* 信息行放到控件下方，控件保持一行 */
+  }
+
+  .player-controls {
+    order: 1;
+  }
+
+  .progress {
+    order: 2;
+    flex: 1;
+    min-width: 90px;
+  }
+
+  .player-time {
+    display: none; /* 窄屏省空间，进度可拖动即可 */
+  }
+
+  .volume {
+    display: none; /* iOS 用物理音量键 */
+  }
+
+  /* 卡片与列表适配 */
+  .card {
+    padding: 12px;
+  }
+
+  .login-card {
+    margin: 8px auto;
+  }
+
+  .detail-head {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .detail-meta {
+    align-items: center;
+  }
+
+  /* 歌曲行：按语义 class 处理，不再用 nth-child——两种行结构不同：
+     - 歌单行 .song-row--playlist：序号 / 信息 / 时长 / 操作；
+     - 搜索行 .song-row--search：序号 / 信息 / 时长 / 操作；
+     - 下载行 .song-row--download：信息 / 来源·操作 / 路径（子节点数量不固定）。
+     窄屏统一两行布局：第一行放曲名信息（信息列不再与操作按钮抢宽度），
+     操作区独占第二行（grid-column: 1 / -1）。
+     320px 下一行放不下 44px 按钮组，硬挤会把曲名截到几个字符。 */
+  .song-row {
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 4px 6px;
+    padding: 6px;
+  }
+
+  /* 次要列（语义 class 标注）：序号与时长让位 */
+  .song-row .song-index,
+  .song-row .song-duration {
+    display: none;
+  }
+
+  /* 歌单行与搜索行都没有多选框，单列即可 */
+  .song-row--playlist,
+  .song-row--search {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  /* 操作区独占一行，右对齐；曲名在上行保持完整可读 */
+  .song-row .song-actions {
+    grid-column: 1 / -1;
+    justify-content: flex-end;
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  /* 下载行：两行 flex —— 曲名信息独占一行，来源 / 操作 / 路径次行 */
+  .song-row--download {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 8px;
+    min-width: 0;
+  }
+
+  .song-row--download .song-info {
+    flex: 1 1 100%;
+    min-width: 0;
+  }
+
+  .song-row--download .dl-source {
+    flex: none;
+  }
+
+  .song-row--download .song-path {
+    flex: none;
+    max-width: 40%;
+    margin-left: auto;
+  }
+
+  /* 我的歌单概览：正文区里的歌单条目同样是触控目标（≥44px），
+     长歌单名省略显示，不撑破 320px 宽的视口 */
+  .playlist-overview-list {
+    padding: 4px;
+  }
+
+  .playlist-overview-list .side-item {
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  .playlist-overview-list .side-name {
+    min-width: 0;
+  }
+
+  /* 头部卡片（搜索栏 / 下载说明）允许折行 */
+  .card.row {
+    flex-wrap: wrap;
+  }
+
+  /* 触控目标 ≥44px（Apple HIG） */
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+    padding: 8px;
+  }
+
+  .btn {
+    padding: 8px 14px;
+    font-size: 14px;
+  }
+
+  .checkbox {
+    font-size: 15px;
+    padding: 6px 2px;
+  }
+
+  .toast-host {
+    left: 12px;
+    right: 12px;
+    bottom: calc(env(safe-area-inset-bottom, 0px) + 96px);
+    max-width: none;
+  }
+
+  /* 触屏没有 hover：清掉悬停态避免「点了才消失」的观感 */
+  .btn:hover,
+  .side-item:hover,
+  .song-row:hover {
+    background: transparent;
+  }
+
+  /* 应用内表单 / 确认弹层：窄屏占满宽度、可滚动，
+     按钮平分整行并保持 44px 触控高度（替代 window.prompt / confirm） */
+  .modal {
+    width: 100%;
+    max-height: 82dvh;
+  }
+
+  .modal-actions {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .modal-actions .btn {
+    width: 100%;
+    min-height: 44px;
+    padding: 10px 12px;
+  }
+
+  /* 表单里的下拉框同样保持 ≥44px 触控高度，≥16px 字号防 iOS 缩放 */
+  .modal-field select.input {
+    min-height: 44px;
+    font-size: 16px;
+  }
+}
+
+/* ---- iOS 专属微调（body.is-ios） ---- */
+
+body.is-ios {
+  /* 禁用 iOS 点击高亮与长按呼出菜单，观感更接近原生 */
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+body.is-ios .input,
+body.is-ios .textarea,
+body.is-ios select {
+  /* 防聚焦缩放 */
+  font-size: 16px;
+}
+
+body.is-ios button {
+  cursor: default;
+}

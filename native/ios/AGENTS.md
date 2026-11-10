@@ -109,3 +109,15 @@ cargo test --manifest-path crates/alger-ffi/Cargo.toml
   "Apple Distribution" 又报 conflicting provisioning settings）。
   留空由 Xcode 按 Archive 动作自动选分发身份 + App Store 描述文件
   （需 `-allowProvisioningUpdates` 让它自动建 App ID 与描述文件）。
+- **CLI 归档的 Team 元数据为空**：`xcodebuild archive`（身份留空）写出的
+  `xcarchive/Info.plist → ApplicationProperties.SigningIdentity / Team`
+  是空串 → **Organizer 会报 "No Team Found in Archive"**（Organizer 会把
+  归档**复制**进 `~/Library/Developer/Xcode/Archives/`，拖新包前先删旧副本）。
+  两种解法：
+  - **上传 .ipa 就行**（推荐）：Transporter.app 拖入
+    `.artifacts/ios-export/AlgerMusicMinimal.ipa`，或 `altool --upload-app`
+    （都 **不需要** Organizer）；
+  - 要让 Organizer 可用：门户 **手动**建一个 App Store 描述文件（非
+    Xcode managed），工程改 `CODE_SIGN_STYLE: Manual` +
+    `PROVISIONING_PROFILE_SPECIFIER`（Xcode 自动建的描述文件带
+    "Xcode managed" 标记，手动签名不认）。

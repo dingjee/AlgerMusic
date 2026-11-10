@@ -56,12 +56,6 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.alger.music.ios.minimal
         CODE_SIGN_STYLE: Automatic
-        # **不写死签名身份**：xcodegen 默认写 "iPhone Developer"
-        # （= Apple Development），会让归档匹配到**开发**描述文件，导出
-        # App Store 时报 "No profiles for ... (iOS App Store)"；留空则由
-        # Xcode 按动作自动选（Archive → Apple Distribution + App Store 描述文件）。
-        # 手动写 "Apple Distribution" 也会报 "conflicting provisioning settings"。
-        CODE_SIGN_IDENTITY: ""
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
@@ -69,3 +63,17 @@ targets:
         # 构建号默认 1；TestFlight 构建由脚本用 CURRENT_PROJECT_VERSION=… 覆盖
         #（App Store Connect 要求构建号递增）。
         CURRENT_PROJECT_VERSION: "1"
+      configs:
+        # **Release：自动签名 + 身份留空**。
+        # - 写 "Apple Distribution" → 报 conflicting provisioning settings
+        #   （Xcode 自动签名在 CLI archive 下按 development 解析）；
+        # - 改成手动签名 → 报 "profile is Xcode managed"（自动建的描述文件
+        #   带 Xcode managed 标记，手动签名不认）。
+        # 留空时导出走的是 **App Store 描述文件 + Apple Distribution 证书**
+        # （已验证 get-task-allow=false），产出的 .ipa 可直接上传；
+        # 代价：归档元数据里 SigningIdentity/Team 为空，Organizer 会显示
+        # "No Team Found in Archive" —— 上传改用 Transporter / altool 即可。
+        Release:
+          CODE_SIGN_STYLE: Automatic
+          CODE_SIGN_IDENTITY: ""
+          DEVELOPMENT_TEAM: MFMGY838LG

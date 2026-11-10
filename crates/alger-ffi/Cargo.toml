@@ -1,0 +1,18 @@
+[package]
+name = "alger-ffi"
+version = "5.2.0"
+edition = "2021"
+rust-version = "1.82"
+description = "Alger Music iOS 原生 FFI：alger-bridge 核心（lib）的进程内 C ABI 封装（iOS 禁子进程）"
+license = "MIT"
+
+[lib]
+name = "alger_ffi"
+crate-type = ["staticlib", "rlib"]
+
+[dependencies]
+alger-bridge = { path = "../alger-bridge" }
+alger-core = { path = "../alger-core" }
+serde_json = "1"
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time"] }
+parking_lot = "0.12"

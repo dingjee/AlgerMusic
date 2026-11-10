@@ -11,6 +11,7 @@ src-tauri/gen/schemas/
 # 原生桥接 / 核心 crate 的独立构建目录（Package.resolved / Cargo.lock 入库保留）
 crates/alger-core/target/
 crates/alger-bridge/target/
+crates/alger-ffi/target/
 # SwiftPM 原生端构建目录（Package.resolved 入库保留）
 native/macos/.build/
 

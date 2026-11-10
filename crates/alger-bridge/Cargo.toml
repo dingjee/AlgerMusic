@@ -3,8 +3,12 @@ name = "alger-bridge"
 version = "5.2.0"
 edition = "2021"
 rust-version = "1.82"
-description = "Alger Music 原生 macOS 桥接进程：stdin/stdout JSON 行协议"
+description = "Alger Music 原生桥接核心：macOS stdio 进程 / iOS FFI 共用同一份 dispatch"
 license = "MIT"
+
+[lib]
+name = "alger_bridge"
+path = "src/lib.rs"
 
 [[bin]]
 name = "alger-bridge"

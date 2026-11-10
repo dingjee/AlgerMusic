@@ -48,3 +48,15 @@ lofty = "0.22"
 # 下载队列跨进程互斥（flock）：stat 比较 + rename 不是跨进程事务，
 # 两实例可同时通过检查互相覆盖；必须持有真实文件锁后再检查再写。
 libc = "0.2"
+
+# iOS 沙盒 Documents 解析（共享文件 src-tauri/src/session.rs 的
+# `ios_documents_dir`）：FFI 模式下会话路径由 Swift 显式传入，该函数
+# 仅供默认路径兜底；与 src-tauri 同一版本族。
+[target.'cfg(target_os = "ios")'.dependencies]
+objc2-foundation = { version = "0.3", features = [
+    "NSString",
+    "NSURL",
+    "NSError",
+    "NSFileManager",
+    "NSPathUtilities",
+] }

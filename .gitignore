@@ -14,6 +14,9 @@ crates/alger-bridge/target/
 crates/alger-ffi/target/
 # SwiftPM 原生端构建目录（Package.resolved 入库保留）
 native/macos/.build/
+native/ios/.build/
+# alger-ffi staticlib 产物（scripts/build-ios-ffi.sh 生成）
+native/ios/libs/
 
 # Tauri iOS 生成工程：工程配置 / 源码 / assets 入库，
 # 仅忽略构建产物与缓存（libapp.a、CocoaPods、DerivedData 等）

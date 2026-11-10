@@ -1,0 +1,49 @@
+name: AlgerMusicMinimal
+options:
+  bundleIdPrefix: com.alger.music
+  createIntermediateGroups: true
+  deploymentTarget:
+    iOS: "16"
+  groupSortPosition: top
+
+packages:
+  AlgerIOS:
+    path: ../
+
+settings:
+  base:
+    DEVELOPMENT_TEAM: 9SVGN86A32
+    SWIFT_VERSION: "5.9"
+    CURRENT_PROJECT_VERSION: "5.2.0"
+    MARKETING_VERSION: "5.2.0"
+
+targets:
+  AlgerMusicMinimal:
+    type: application
+    platform: iOS
+    sources:
+      - path: ../Sources/AlgerApp
+    dependencies:
+      - package: AlgerIOS
+        product: AlgerKit
+    info:
+      path: Info.plist
+      properties:
+        CFBundleDisplayName: 网易音乐
+        UILaunchScreen: {}
+        # 后台播放（妈妈版的核心体验：锁屏也能听）
+        UIBackgroundModes:
+          - audio
+        # 下载目录在 Documents/Downloads → 「文件」App 里能看到
+        UIFileSharingEnabled: true
+        LSSupportsOpeningDocumentsInPlace: true
+        # 第三方音源可能是 http（自用版再收紧）
+        NSAppTransportSecurity:
+          NSAllowsArbitraryLoads: true
+        ITSAppUsesNonExemptEncryption: false
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: com.alger.music.ios.minimal
+        CODE_SIGN_STYLE: Automatic
+        TARGETED_DEVICE_FAMILY: "1"
+        ENABLE_USER_SCRIPT_SANDBOXING: NO

@@ -17,7 +17,7 @@ cd "$ROOT"
 
 FULL_XCODE="/Applications/Xcode.app/Contents/Developer"
 [ -x "$FULL_XCODE/usr/bin/xcodebuild" ] || {
-  echo "错误：找不到完整 Xcode（$FULL_XCODE）" >&2
+  echo "错误：找不到完整 Xcode（${FULL_XCODE}）" >&2
   exit 1
 }
 export DEVELOPER_DIR="$FULL_XCODE"
@@ -27,10 +27,10 @@ LOG_DIR="${ALGER_IOS_SWIFT_LOG_DIR:-$ARTIFACTS/logs}"
 SCRATCH="${ALGER_IOS_SWIFT_SCRATCH:-$ARTIFACTS/ios-swift-build}"
 mkdir -p "$LOG_DIR" "$SCRATCH"
 
-# 1) FFI 静态库：宿主（macOS）slice 缺失时先构建。
-if [ ! -f "$ROOT/native/ios/libs/macos/libalger_ffi.a" ]; then
-  echo ">> 构建 host FFI 静态库…"
-  sh "$ROOT/scripts/build-ios-ffi.sh" host
+# 1) FFI xcframework：缺失时先构建（macOS + iOS 真机 + 模拟器 slice）。
+if [ ! -d "$ROOT/native/ios/libs/AlgerFFI.xcframework" ]; then
+  echo ">> 构建 FFI xcframework…"
+  sh "$ROOT/scripts/build-ios-ffi.sh" all
 fi
 
 # 2) swift test（日志进 .artifacts，退出码取真实命令）。

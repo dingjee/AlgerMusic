@@ -19,51 +19,78 @@
 **原生 SwiftUI iOS App + Rust 静态库**，与 `native/macos` 同代架构。
 
 - **禁止**沿用 `crates/alger-bridge` 的 stdio 子进程模型：iOS 不允许 fork/exec。
-  新建 `crates/alger-ffi`（staticlib / C ABI），依赖 `alger-core`——它已是纯 lib
-  crate，依赖（reqwest+rustls / tokio / lofty）全部兼容 `aarch64-apple-ios`。
-- **复用** JSON-line 协议的**语义**（dispatch 方法名 / 错误码，见
-  `crates/alger-bridge/src/main.rs` 的 `dispatch`），Swift 端心智不变；
-  实现可改为进程内调用（如后台线程 + 队列），不必逐字复刻 stdio。
-- UI / 分层照抄 `native/macos`：SwiftPM 包、AlgerKit（桥接客户端 + 播放器 + 下载器）
-  与 AlgerApp（界面）分目录、`AppModel` 状态中枢、AVFoundation 播放
-  （参考 `PlaybackController`，注意 iOS 需 AVAudioSession 分类与激活）。
+  `crates/alger-bridge` 已拆出 **lib target**（`Bridge` / `dispatch`），
+  `crates/alger-ffi` 是它的 **进程内 C ABI 封装**（staticlib）。
+- **复用** JSON-line 协议语义（dispatch 方法名 / 错误码），Swift 端心智不变；
+  传输改为：Rust 把每条协议行交给 Swift 注册的**行回调**。
+- UI / 分层照抄 `native/macos`：SwiftPM 包、AlgerKit（客户端 + 播放器 + 下载）、
+  App 层（状态中枢 + 页面）、AVFoundation 播放。
 - `src-tauri/gen/apple`（Tauri iOS 管线）与 `scripts/build-ios.sh` 在本分支
   **冻结不动**，仅作签名 / 真机安装（devicectl）命令参考。
 
-## 目录规划（本分支新增）
+## 目录（现状）
 
 ```
-native/ios/                SwiftPM 包
-  Sources/AlgerKit/        FFI 桥接客户端 + 播放器 + 下载器
-  Sources/AlgerApp/        SwiftUI 界面（搜索 / 播放 / 本地 三 Tab）
-  Tests/AlgerKitTests/
-  AGENTS.md                本文件
-crates/alger-ffi/          Rust 静态库 crate（依赖 alger-core）
+crates/alger-bridge/src/lib.rs   桥接核心（Bridge / dispatch）：stdio 与 FFI 共用
+crates/alger-ffi/src/lib.rs      进程内 C ABI：init / call / shutdown + 行回调
+native/ios/ffi/alger_ffi.h       C 头文件（与 alger-ffi 的 C ABI 一一对应）
+native/ios/Package.swift         SwiftPM：binaryTarget(AlgerFFI) + AlgerKit + 测试
+native/ios/Sources/AlgerKit/     FFIClient / BridgeService / 模型 / 播放器 / 下载
+native/ios/Sources/AlgerApp/     SwiftUI 应用层（登录门 + 找歌 / 播放 / 已下载）
+native/ios/App/project.yml       Xcode 工程唯一真源（xcodegen 生成 .xcodeproj）
+scripts/build-ios-ffi.sh         构建各平台 slice → libs/AlgerFFI.xcframework
+scripts/test-ios-swift.sh        宿主（macOS）跑 Swift 包测试
+scripts/build-ios-app.sh         生成工程 + xcodebuild 构建（sim / device）
+```
+
+## 命令（都从仓库根跑）
+
+```sh
+# 1) FFI 静态库 → xcframework（macOS 宿主测试 / iOS 真机 / 模拟器 共用一份）
+sh scripts/build-ios-ffi.sh all        # 产物：native/ios/libs/AlgerFFI.xcframework（不入库）
+
+# 2) Swift 包测试（宿主 arm64 macOS；缺 xcframework 会自动先构建）
+sh scripts/test-ios-swift.sh
+
+# 3) iOS 应用构建
+sh scripts/build-ios-app.sh sim                    # 模拟器 Debug（不签名）
+sh scripts/build-ios-app.sh device                 # 真机 Debug（Team 9SVGN86A32 自动签名）
+sh scripts/build-ios-app.sh device --install       # 真机构建并安装（devicectl）
+
+# 4) Rust 侧测试
+cargo test --manifest-path crates/alger-core/Cargo.toml
+cargo test --manifest-path crates/alger-bridge/Cargo.toml
+cargo test --manifest-path crates/alger-ffi/Cargo.toml
 ```
 
 ## 硬约束
 
 1. **保真继承现状**：不动 `native/macos` 与 `crates/*` 既有行为；改 `alger-core`
-   必须先跑它的测试（见下），改桥接相关才跑 `alger-bridge` 测试。
+   必须先跑它的测试，改桥接相关才跑 `alger-bridge` / `alger-ffi` 测试。
 2. **iOS 路径与后台**：
-   - 会话 / 设置 / 已下载音频放 App 容器（`FileManager` 的 Application Support /
-     Documents），**不照搬 macOS 绝对路径**；`alger-core` 里的 `dirs` crate 在
-     iOS 返回值不可靠，路径一律由 Swift 层传入 Rust；
-   - 后台播放：`UIBackgroundModes: audio` + AVAudioSession 正确分类与中断处理；
-   - 「文件」App 可见下载目录：`UIFileSharingEnabled` +
-     `LSSupportsOpeningDocumentsInPlace`（参考 `src-tauri/Info.ios.plist`）。
-3. **签名**：Team `9SVGN86A32`、开发签名；bundle id 用新值（如
-   `com.alger.music.ios.minimal`），不与 Tauri 版 `com.alger.music.ios` 冲突。
+   - 会话 / 设置落 `Application Support/AlgerMusic/`，下载落
+     `Documents/Downloads/`（**文件 App 可见**）；路径 **一律由 Swift 计算后
+     传给 Rust**（`ContainerPaths`）——`alger-core` 里的 `dirs` crate 在 iOS
+     不可靠；
+   - 后台播放：`UIBackgroundModes: audio` + AVAudioSession `.playback`；
+   - 登录：WKWebView 只用于登录页，取 `MUSIC_U` Cookie 交桥接校验后落盘。
+3. **签名**：Team `9SVGN86A32`、开发签名；bundle id `com.alger.music.ios.minimal`
+   （不与 Tauri 版 `com.alger.music.ios` 冲突）。
 4. **不破坏既有资产**：`dist/`、`~/Library` 用户数据、`.tools/` 一律不碰；
    Tauri iOS 工程不改不删。
 
-## 检查（每次改动后跑对应的）
+## 已知坑（踩过的，别再踩）
 
-```sh
-cargo test --manifest-path crates/alger-core/Cargo.toml   # 动了 core
-cargo test --manifest-path crates/alger-bridge/Cargo.toml # 动了 bridge
-sh scripts/test-swift.sh                                   # 动了 native/macos
-# native/ios 与 crates/alger-ffi 就位后，在此补各自的测试命令
-```
-
-临时产物一律进 `.artifacts/`（已 gitignore），不留仓库根目录。
+- **`DEVELOPER_DIR` 必须指向完整 Xcode**（`/Applications/Xcode.app/Contents/Developer`）：
+  否则 iOS 交叉编译时 ring 的 build script 找不到 `iphoneos` SDK。
+- **xcframework 不入库**：换机器 / 干净检出后，先跑 `scripts/build-ios-ffi.sh all`，
+  否则 SwiftPM 载入 `binaryTarget` 直接失败。
+- **shell 变量后紧跟全角标点**必须写成 `${VAR}`：非 UTF-8 locale 下 bash 会把
+  全角字节并入变量名（`$MODE）` → `unbound variable`）。
+- **部署目标 iOS 16**（`NavigationStack` 需要 16+）。
+- **模拟器 slice 只有 arm64**（Apple Silicon）；构建模拟器用
+  `ARCHS=arm64 ONLY_ACTIVE_ARCH=YES`。
+- **行回调的字符串所有权转给 Swift**：Swift 侧必须 `free()`（见
+  `FFIClient.swift` 的 `deliver`）；漏 free 会泄漏，重复 free 会崩。
+- **C 回调没有 context 指针**：响应行靠 **进程级唯一 id** 路由（`FFIRegistry`）；
+  事件行无 id，广播给全部客户端。

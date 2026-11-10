@@ -1,4 +1,4 @@
-import CAlgerFFI
+import AlgerFFI
 import Foundation
 
 /// FFI 客户端错误。

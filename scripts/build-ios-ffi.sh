@@ -1,27 +1,30 @@
 #!/usr/bin/env bash
-# 构建 alger-ffi staticlib 并铺到 native/ios/libs/<platform>/。
+# 构建 alger-ffi staticlib 并打成 xcframework（native/ios/libs/AlgerFFI.xcframework）。
 #
 # 用法：
-#   sh scripts/build-ios-ffi.sh            # host（macOS，swift test 用）
-#   sh scripts/build-ios-ffi.sh device     # iOS 真机（arm64）
-#   sh scripts/build-ios-ffi.sh sim        # iOS 模拟器（arm64 + x86_64 fat）
-#   sh scripts/build-ios-ffi.sh all        # 以上全部
+#   sh scripts/build-ios-ffi.sh            # host + iOS 全部（默认）
+#   sh scripts/build-ios-ffi.sh host       # 仅 macOS（宿主测试用）
+#   sh scripts/build-ios-ffi.sh device     # 仅 iOS 真机
+#   sh scripts/build-ios-ffi.sh sim        # 仅 iOS 模拟器
 #
 # 要点：
 #   1. iOS 交叉编译 **必须** DEVELOPER_DIR 指向完整 Xcode（ring 等
 #      build script 调 xcrun 取 SDK；CommandLineTools 没有 iphoneos SDK）；
 #   2. Rust 工具链优先项目内 .tools（与 build-ios.sh 同一约定）；
-#   3. 产物只进 native/ios/libs/（gitignored），不入 target/ 之外的路径。
+#   3. 产物只进 native/ios/libs/（gitignored）；xcframework 同时含
+#      macOS / iOS 真机 / iOS 模拟器 slice，宿主测试与真机构建共用同一份；
+#   4. macOS slice 只含当前宿主架构（Apple Silicon）；Intel 机器需自行
+#      安装 x86_64-apple-darwin target 后再构建（脚本会提示）。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
 
-MODE="${1:-host}"
+MODE="${1:-all}"
 
 FULL_XCODE="/Applications/Xcode.app/Contents/Developer"
 [ -x "$FULL_XCODE/usr/bin/xcodebuild" ] || {
-  echo "错误：找不到完整 Xcode（$FULL_XCODE）" >&2
+  echo "错误：找不到完整 Xcode（${FULL_XCODE}）" >&2
   exit 1
 }
 export DEVELOPER_DIR="$FULL_XCODE"
@@ -38,46 +41,70 @@ else
 fi
 
 MANIFEST="$ROOT/crates/alger-ffi/Cargo.toml"
+HEADER_SRC="$ROOT/native/ios/ffi/alger_ffi.h"
 OUT="$ROOT/native/ios/libs"
+STAGE="$OUT/stage"
 mkdir -p "$OUT"
 
-build_one() {
-  local triple="$1" dest="$2"
-  echo ">> 构建 $triple → $dest"
+# ---- 编译各平台 slice -------------------------------------------------
+build_slice() {
+  local triple="$1" name="$2"
+  echo ">> 构建 $triple → $name"
   cargo build --manifest-path "$MANIFEST" --release --target "$triple"
-  mkdir -p "$OUT/$dest"
-  cp "$ROOT/crates/alger-ffi/target/$triple/release/libalger_ffi.a" "$OUT/$dest/"
+  mkdir -p "$STAGE/$name"
+  cp "$ROOT/crates/alger-ffi/target/$triple/release/libalger_ffi.a" "$STAGE/$name/libalger_ffi.a"
+  cp "$HEADER_SRC" "$STAGE/$name/alger_ffi.h"
+  cat > "$STAGE/$name/module.modulemap" <<'EOF'
+module AlgerFFI {
+    header "alger_ffi.h"
+    export *
+}
+EOF
+}
+
+HOST_TRIPLE="$(rustc -vV | awk '/^host:/{print $2}')"
+
+build_host() {
+  build_slice "$HOST_TRIPLE" macos
+}
+
+build_device() {
+  build_slice aarch64-apple-ios ios-device
+}
+
+build_sim() {
+  build_slice aarch64-apple-ios-sim ios-sim
 }
 
 case "$MODE" in
-  host)
-    echo ">> 构建 host（$(uname -m)-apple-darwin）→ macos"
-    cargo build --manifest-path "$MANIFEST" --release
-    mkdir -p "$OUT/macos"
-    cp "$ROOT/crates/alger-ffi/target/release/libalger_ffi.a" "$OUT/macos/"
-    ;;
-  device)
-    build_one aarch64-apple-ios ios-device
-    ;;
-  sim)
-    build_one aarch64-apple-ios-sim ios-sim
-    build_one x86_64-apple-ios ios-sim-x86_64
-    echo ">> 合并模拟器 fat lib"
-    lipo -create \
-      "$OUT/ios-sim/libalger_ffi.a" \
-      "$OUT/ios-sim-x86_64/libalger_ffi.a" \
-      -output "$OUT/ios-sim/libalger_ffi.a"
-    rm -rf "$OUT/ios-sim-x86_64"
-    ;;
+  host) build_host ;;
+  device) build_device ;;
+  sim) build_sim ;;
   all)
-    "$0" host
-    "$0" device
-    "$0" sim
+    build_host
+    build_device
+    build_sim
     ;;
   *)
-    echo "用法：$0 [host|device|sim|all]" >&2
+    echo "用法：$0 [all|host|device|sim]" >&2
     exit 2
     ;;
 esac
 
-echo ">> 完成：$OUT"
+# ---- 打 xcframework（按已有 slice 生成）--------------------------------
+ARGS=()
+for name in macos ios-device ios-sim; do
+  [ -f "$STAGE/$name/libalger_ffi.a" ] || continue
+  ARGS+=(-library "$STAGE/$name/libalger_ffi.a" -headers "$STAGE/$name")
+done
+if [ ${#ARGS[@]} -gt 0 ]; then
+  echo ">> 生成 xcframework（${#ARGS[@]} / 2 个 slice）"
+  rm -rf "$OUT/AlgerFFI.xcframework"
+  # shellcheck disable=SC2086
+  xcodebuild -create-xcframework "${ARGS[@]}" \
+    -output "$OUT/AlgerFFI.xcframework" >/dev/null
+  echo ">> 完成：$OUT/AlgerFFI.xcframework"
+else
+  echo ">> 没有可用的 slice，xcframework 未更新" >&2
+  exit 1
+fi

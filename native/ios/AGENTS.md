@@ -99,3 +99,13 @@ cargo test --manifest-path crates/alger-ffi/Cargo.toml
   `xcodebuild CURRENT_PROJECT_VERSION=…` 覆盖失效（TestFlight 构建号被判重复）。
 - **归档产物在 `.artifacts/ios-archive/`**（`clean.sh` 会清掉）；`.ipa` 在
   `.artifacts/ios-export/`。未签名包（`--no-sign`）只能本地看，**不能上传**。
+- **签名团队是 `MFMGY838LG`（JI DING）**，不是 Tauri 版用的 `9SVGN86A32`：
+  后者在本机 Xcode **没有账号**（报 No Account for Team / No Team Found in
+  Archive）；前者是当前登录账号所属的**付费**团队，且钥匙串里已有
+  Apple Distribution 证书。换团队时同步改 `project.yml` 的
+  `DEVELOPMENT_TEAM` 与 `build-ios-testflight.sh` 的 `TEAM_ID`。
+- **`CODE_SIGN_IDENTITY` 必须留空**（xcodegen 默认写 "iPhone Developer" 会
+  匹配**开发**描述文件 → 导出报 No profiles for ... App Store；手写
+  "Apple Distribution" 又报 conflicting provisioning settings）。
+  留空由 Xcode 按 Archive 动作自动选分发身份 + App Store 描述文件
+  （需 `-allowProvisioningUpdates` 让它自动建 App ID 与描述文件）。

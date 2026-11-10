@@ -1,0 +1,34 @@
+{
+  "fill-specializations": [
+    {
+      "value": {
+        "linear-gradient": [
+          "srgb:0.302,0.325,0.357,1",
+          "srgb:0.133,0.149,0.173,1"
+        ]
+      }
+    }
+  ],
+  "groups": [
+    {
+      "layers": [
+        {
+          "glass": false,
+          "image-name": "Mark.png",
+          "name": "Alger emblem"
+        }
+      ],
+      "name": "Alger emblem",
+      "specular": false,
+      "translucency": {
+        "enabled": false,
+        "value": 0
+      }
+    }
+  ],
+  "supported-platforms": {
+    "squares": [
+      "macOS"
+    ]
+  }
+}

@@ -90,6 +90,15 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate {
         }
     }
 
+    /// ⌘F → 聚焦 **侧栏第一行的搜索框**（**唯一搜索入口**）。
+    @objc func focusSearch(_ sender: Any?) {
+        Task { @MainActor [weak self] in
+            self?.model?.focusSearchField()
+            self?.mainWindow?.makeKeyAndOrderFront(nil)
+            NSApp.activate(ignoringOtherApps: true)
+        }
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         // 兜底收束：**幂等且有界**（前台的异步收束已经做过时这里立即返回）。
         model?.shutdownNow()
@@ -177,6 +186,13 @@ enum MainMenu {
         editMenu.addItem(withTitle: "拷贝", action: #selector(NSText.copy(_:)), keyEquivalent: "c")
         editMenu.addItem(withTitle: "粘贴", action: #selector(NSText.paste(_:)), keyEquivalent: "v")
         editMenu.addItem(withTitle: "全选", action: #selector(NSText.selectAll(_:)), keyEquivalent: "a")
+        editMenu.addItem(.separator())
+        // **⌘F**：聚焦侧栏第一行的搜索框（唯一搜索入口，没有第二个入口）。
+        editMenu.addItem(
+            withTitle: "搜索",
+            action: #selector(AppDelegate.focusSearch(_:)),
+            keyEquivalent: "f"
+        )
         editMenuItem.submenu = editMenu
         mainMenu.addItem(editMenuItem)
 

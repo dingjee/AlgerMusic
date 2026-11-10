@@ -2,6 +2,10 @@ import AlgerKit
 import SwiftUI
 
 /// 主界面骨架：原生侧栏 + 内容区 + 底部播放条。
+///
+/// **搜索在侧栏第一行**（`SidebarView` 里的原生 `TextField` 胶囊）：
+/// 这里 **不再挂 `.searchable`** —— 搜索入口只有那一个，
+/// 侧栏换页时搜索会被清掉（**搜索不能遮住目的页**）。
 struct ContentView: View {
     @EnvironmentObject private var model: AppModel
 
@@ -27,11 +31,6 @@ struct ContentView: View {
                         .padding(.bottom, 18)
                 }
         }
-        .searchable(
-            text: $model.searchText,
-            placement: .sidebar,
-            prompt: "搜索本地与网络"
-        )
         .onChange(of: model.searchText) { newValue in
             // **唯一搜索入口**：输入内容即进入搜索结果。
             if newValue.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {

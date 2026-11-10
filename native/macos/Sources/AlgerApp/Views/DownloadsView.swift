@@ -156,6 +156,8 @@ struct DownloadsView: View {
 struct QueueView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showingSaveSheet = false
+    /// 当前选中的队列项（**稳定 ID = queueEntryId**）。
+    @State private var selectedEntryID: UUID?
 
     private func additionResult(for item: PlaybackItem) -> SearchResult? {
         switch item.origin {
@@ -179,8 +181,9 @@ struct QueueView: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
-            // **共享标题布局**：标题 / 副标题 / 右侧操作（图标 + 文字）。
-            PageHeader(title: "临时播放", subtitle: "共\(model.player.queue.count)项") {
+            // **共享标题布局**：标题按 **队列来源** 显示
+            // （临时播放 / “XX”的推荐雷达 / 私人 FM）。
+            PageHeader(title: model.queueDisplayTitle, subtitle: "共\(model.player.queue.count)项") {
                 HStack(spacing: 8) {
                     PageActionButton(
                         title: "另存为歌单",
@@ -200,6 +203,13 @@ struct QueueView: View {
                     }
                 }
             }
+            if model.playbackContext == .personalFM, let error = model.fmError {
+                Text(error)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .padding(.horizontal, 20)
+                    .padding(.top, 8)
+            }
             if model.player.queue.isEmpty {
                 EmptyStateView(
                     systemImage: "text.line.first.and.arrowtriangle.forward",
@@ -207,7 +217,8 @@ struct QueueView: View {
                     message: "播放或加入队列后会显示在这里。"
                 )
             } else {
-                List {
+                // **原生选中语义**：单击正文即选中（**按 queueEntryId**：不误选同曲目的其它条目）。
+                List(selection: $selectedEntryID) {
                     ForEach(Array(model.player.queue.enumerated()), id: \.element.queueEntryId) { index, item in
                         TrackRowView(
                             title: item.title,
@@ -229,6 +240,7 @@ struct QueueView: View {
                             .buttonStyle(.plain)
                             .help("从队列移除")
                         }
+                        .tag(item.queueEntryId)
                     }
                 }
                 .listStyle(.inset)

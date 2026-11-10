@@ -8,6 +8,8 @@ struct LocalPlaylistDetailView: View {
     @State private var editingMetadata = false
     @State private var editTitle = ""
     @State private var editDetails = ""
+    /// 当前选中的行（**原生选中态**：单击正文即选中，不触发播放）。
+    @State private var selectedRow: TrackRowTag?
 
     private var playlist: LocalPlaylist? {
         model.localPlaylists.first { $0.id == playlistID }
@@ -52,9 +54,12 @@ struct LocalPlaylistDetailView: View {
                         )
                     } else {
                         let rows = Array(playlist.entries.enumerated())
-                        List {
+                        // **原生选中语义**（与歌曲页一致）：单击正文即选中，
+                        // 播放按钮 / 「+」 / 移除 / 重排都照旧。
+                        List(selection: $selectedRow) {
                             ForEach(rows, id: \.element.path) { row in
                                 playlistRow(row: row, playlist: playlist)
+                                    .tag(TrackRowTag.local(path: row.element.path))
                             }
                             .onMove { offsets, destination in
                                 // 重排后立即落盘（写失败会明确报错）。
@@ -68,9 +73,12 @@ struct LocalPlaylistDetailView: View {
                             // **推荐雷达：原歌单 List 的最后一组 Section**
                             // （长歌单时随曲目一起滚动，不另开滚动区）。
                             Section {
-                                PlaylistRadarContent(request: localRadarRequest(playlist))
+                                PlaylistRadarContent(
+                                    request: localRadarRequest(playlist),
+                                    rowTag: { TrackRowTag.radar(id: $0.id) }
+                                )
                             } header: {
-                                SectionHeader(title: "推荐雷达")
+                                SectionHeader(title: radarTitle(for: playlist.title))
                                     .textCase(nil)
                             }
                         }
@@ -129,10 +137,17 @@ struct LocalPlaylistDetailView: View {
         return RadarRequest(
             scope: "local:\(playlist.id)",
             contentSignature: signature,
+            // **真实标题**（雷达分区标题 / 队列标题都用它）。
+            title: playlist.title,
             seedSongIDs: known,
             seedLocalTracks: unknown,
             sourceSongIDs: Set(known)
         )
+    }
+
+    /// 雷达分区的标题（**带歌单真实标题**）。
+    private func radarTitle(for name: String) -> String {
+        name.isEmpty ? "推荐雷达" : "“\(name)”的推荐雷达"
     }
 
     @ViewBuilder
@@ -232,9 +247,12 @@ struct RemotePlaylistDetailView: View {
     @State private var detail: RemotePlaylist?
     @State private var loading = false
     @State private var loadError: String?
+    /// 当前选中的行（**原生选中态**：单击正文即选中，不触发播放）。
+    @State private var selectedRow: TrackRowTag?
 
     private var playlist: RemotePlaylist? {
-        model.remotePlaylists.first { $0.id == playlistID }
+        // **收藏的 + 临时预览的**（公开推荐歌单走同一条路）。
+        model.remotePlaylist(withID: playlistID)
     }
 
     var body: some View {
@@ -288,17 +306,22 @@ struct RemotePlaylistDetailView: View {
                         )
                     } else {
                         let rows = Array(songs.enumerated())
-                        List {
+                        // **原生选中语义**（与歌曲页一致）：单击正文即选中。
+                        List(selection: $selectedRow) {
                             ForEach(rows, id: \.element.id) { row in
                                 rowView(row: row, playlist: playlist)
+                                    .tag(TrackRowTag.remote(id: row.element.id))
                             }
 
                             // **推荐雷达：原歌单 List 的最后一组 Section**
                             // （长歌单时随曲目一起滚动，不另开滚动区）。
                             Section {
-                                PlaylistRadarContent(request: remoteRadarRequest(playlist))
+                                PlaylistRadarContent(
+                                    request: remoteRadarRequest(playlist),
+                                    rowTag: { TrackRowTag.radar(id: $0.id) }
+                                )
                             } header: {
-                                SectionHeader(title: "推荐雷达")
+                                SectionHeader(title: radarTitle(for: playlist.name))
                                     .textCase(nil)
                             }
                         }
@@ -331,10 +354,17 @@ struct RemotePlaylistDetailView: View {
         return RadarRequest(
             scope: "remote:\(playlist.id)",
             contentSignature: signature,
+            // **真实标题**（雷达分区标题 / 队列标题都用它）。
+            title: playlist.name,
             seedSongIDs: Array(ids.prefix(RadarService.Limits.maxSeeds)),
             seedLocalTracks: [],
             sourceSongIDs: Set(ids)
         )
+    }
+
+    /// 雷达分区的标题（**带歌单真实标题**）。
+    private func radarTitle(for name: String) -> String {
+        name.isEmpty ? "推荐雷达" : "“\(name)”的推荐雷达"
     }
 
     @ViewBuilder
@@ -378,17 +408,17 @@ struct RemotePlaylistDetailView: View {
 ///
 /// - **只读**：只给播放队列供曲，**不下载、不改歌单**；
 /// - 播放走 **统一入口**：保留全部已展示的雷达项，从被点击的那一首开始；
-/// - 失败与空结果 **如实显示**，都可重试；**不影响歌单自身的曲目**。
-struct PlaylistRadarContent: View {
+/// - 失败与空结果 **如实显示**，都可重试；**不影响歌单自身的曲目**；
+/// - 雷达行 **有独立的稳定 tag**（不和歌单自己的曲目 ID 冲突）。
+struct PlaylistRadarContent<Row: Hashable>: View {
     @EnvironmentObject private var model: AppModel
     let request: RadarRequest
+    /// 雷达行的稳定 tag（**由调用方给**：本地 / 网络各用自己的命名空间）。
+    let rowTag: (RemoteSong) -> Row
 
     var body: some View {
         let state = model.radarState(for: request.scope)
         VStack(alignment: .leading, spacing: 8) {
-            Text("只推荐不在这个歌单、你的资料库或本应用播放记录里的相似歌曲。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
             RadarStatusView(state: state) {
                 Task { await model.loadRadar(request, force: true) }
             }
@@ -398,11 +428,12 @@ struct PlaylistRadarContent: View {
                     subtitle: song.artistText,
                     trailingText: formatDuration(Double(song.durationMs) / 1000),
                     isCurrent: model.player.current?.id == "netease:\(song.id)",
-                    onPlay: { model.playRadar(state.items, startAt: index) }
+                    onPlay: { model.playRadar(state.items, startAt: index, title: request.title) }
                 ) {
                     // 「+」仍是原来的规则（加入临时播放 / 本地歌单）。
                     AddToPlaylistMenu(result: .remote(song)) { Image(systemName: "plus") }
                 }
+                .tag(rowTag(song))
             }
         }
         .task(id: request.contentSignature) {

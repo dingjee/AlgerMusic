@@ -5,21 +5,28 @@ import SwiftUI
 ///
 /// 规则（产品规格）：
 /// - 使用 **系统原生 sidebar 材质**（随系统外观 / 强调色 / 窗口激活变化）；
+/// - **第一行是搜索框**（原生 `TextField` 胶囊）：与「探索」行左右边缘对齐，
+///   两者之间留出清晰的垂直间距；**输入框不是导航项**（没有 tag）；
 /// - **只有下载条目显示数字**，其余条目与分组不显示数字；
 /// - **没有下载任务时隐藏下载入口**；有任务时按状态显示「正在下载 / 待处理 / 已下载」；
 ///   下载入口固定放在 **资料库分组最后**（歌曲 / 专辑 / 艺人之后）；
 /// - 本地歌单组在前，网络歌单组在后，两组可独立折叠，远程组可在设置里隐藏；
 ///   macOS 14 起由系统分组管理折叠；macOS 13 用普通列表行控制折叠；
 /// - **网络歌单只读**：侧栏不提供新建 / 删除入口，歌单详情页也只有播放与“加入”；
+/// - **队列入口是条件入口**：队列为空时隐藏；播放本地 / 网络歌单时也隐藏
+///   （队列就是那张歌单），播放器条上的队列图标仍可显式访问当前实际队列；
 /// - 左下角显示账号（头像 + 昵称），点击进入账号操作与设置。
 struct SidebarView: View {
     @EnvironmentObject private var model: AppModel
     @State private var showingNewPlaylist = false
-    @State private var localSectionExpanded = true
-    @State private var remoteSectionExpanded = true
+    /// 搜索框焦点（**⌘F** 也会聚焦它）。
+    @FocusState private var searchFocused: Bool
 
     var body: some View {
         List(selection: $model.selection) {
+            // **第一行：搜索框**（不是导航项：没有 tag，点它只是聚焦）。
+            searchFieldRow
+
             Label("探索", systemImage: "safari")
                 .tag(NavigationTarget.home)
                 .accessibilityIdentifier("sidebar-explore")
@@ -46,7 +53,7 @@ struct SidebarView: View {
 
             playlistSection(
                 "本地歌单",
-                expanded: $localSectionExpanded,
+                expanded: $model.localSectionExpanded,
                 showsNewPlaylistButton: true
             ) {
                 ForEach(model.localPlaylists) { playlist in
@@ -59,19 +66,24 @@ struct SidebarView: View {
                 }
             }
 
-            if !model.environment.store.current.settings.hideRemotePlaylists {
-                // 网络歌单组 **只读**：只列出、可折叠，无新建 / 删除入口。
-                playlistSection("网络歌单", expanded: $remoteSectionExpanded) {
-                    ForEach(model.remotePlaylists) { playlist in
+            // 网络歌单组 **只读**：只列出、可折叠，无新建 / 删除入口。
+            // 隐藏偏好下 **只**显示当前来源行（设置值不变）；没有来源行就整组隐藏。
+            if showsRemoteSection {
+                playlistSection("网络歌单", expanded: $model.remoteSectionExpanded) {
+                    ForEach(model.sidebarRemotePlaylists) { playlist in
                         Label(playlist.name, systemImage: "music.note.list")
                             .tag(NavigationTarget.remotePlaylist(playlist.id))
                     }
                 }
             }
 
-            Section {
-                Label("临时播放", systemImage: "text.line.first.and.arrowtriangle.forward")
-                    .tag(NavigationTarget.queue)
+            // **条件入口**：队列为空时没有这一行；雷达 / 私人 FM 显示真实来源。
+            if let entry = model.queueEntry {
+                Section {
+                    Label(entry, systemImage: "text.line.first.and.arrowtriangle.forward")
+                        .tag(NavigationTarget.queue)
+                        .accessibilityIdentifier("sidebar-queue")
+                }
             }
 
         }
@@ -85,6 +97,59 @@ struct SidebarView: View {
             NewPlaylistSheet()
                 .environmentObject(model)
         }
+        // **⌘F** → 聚焦搜索框（唯一搜索入口）。
+        .onChange(of: model.searchFocusToken) { _ in
+            searchFocused = true
+        }
+        // 侧栏换页 → **清掉搜索**：搜索不能遮住目的页。
+        .onChange(of: model.selection) { target in
+            guard target != nil else { return }
+            model.clearSearch()
+        }
+    }
+
+    /// 网络歌单组是否显示。
+    ///
+    /// - 正常（不隐藏）：显示；
+    /// - 隐藏偏好：**只在有当前来源行时显示**（那一行是临时的，设置值不变）。
+    private var showsRemoteSection: Bool {
+        !model.environment.store.current.settings.hideRemotePlaylists
+            || !model.sidebarRemotePlaylists.isEmpty
+    }
+
+    /// 搜索框（**侧栏第一行**：原生 `TextField` 胶囊）。    ///
+    /// - **胶囊**：圆角 = 高度的一半；
+    /// - **左右边缘**与「探索」行一致（同一套行内边距）；
+    /// - 与「探索」之间留出清晰的垂直间距；
+    /// - **不是导航项**（没有 tag）：点它只会聚焦输入框。
+    private var searchFieldRow: some View {
+        HStack(spacing: 6) {
+            Image(systemName: "magnifyingglass")
+                .font(.system(size: 11, weight: .medium))
+                .foregroundStyle(.secondary)
+            TextField("搜索本地与网络", text: $model.searchText)
+                .textFieldStyle(.plain)
+                .focused($searchFocused)
+                .accessibilityIdentifier("sidebar-search")
+            if !model.searchText.isEmpty {
+                Button {
+                    model.clearSearch()
+                } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .font(.system(size: 11))
+                        .foregroundStyle(.secondary)
+                }
+                .buttonStyle(.plain)
+                .help("清除搜索")
+                .accessibilityLabel("清除搜索")
+            }
+        }
+        .padding(.horizontal, 8)
+        .frame(height: 24)
+        .background(Color.secondary.opacity(0.14), in: Capsule())
+        .listRowSeparator(.hidden)
+        // 与「探索」行之间留出清晰的垂直间距。
+        .padding(.bottom, 8)
     }
 
     @ViewBuilder

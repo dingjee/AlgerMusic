@@ -257,15 +257,24 @@ struct AdditionTargetPickerSheet: View {
 /// - 标题直接显示 `model.playbackOrder.title`（顺序播放 / 随机播放），
 ///   一眼能看出当前模式；
 /// - `help` 是悬浮提示；**无障碍标题就是模式名本身**（`AXTitle` = “顺序播放”），
-///   点击后的效果放在 `AXValue` 里 —— 辅助功能与自动化都能稳定读到、能按到。
+///   点击后的效果放在 `AXValue` 里 —— 辅助功能与自动化都能稳定读到、能按到；
+/// - **只显示图标**（`iconOnly`）：底部播放条最右侧用；歌单头部仍是图标 + 文字。
 struct PlaybackOrderButton: View {
     @EnvironmentObject private var model: AppModel
+    /// 只显示图标（**底部播放条**用；歌单头部继续图标 + 文字）。
+    var iconOnly: Bool = false
 
     var body: some View {
         Button {
             model.togglePlaybackOrder()
         } label: {
-            Label(model.playbackOrder.title, systemImage: symbolName)
+            if iconOnly {
+                // **只有图标**：无障碍标题仍由下面的 accessibilityLabel 提供。
+                Label(model.playbackOrder.title, systemImage: symbolName)
+                    .labelStyle(.iconOnly)
+            } else {
+                Label(model.playbackOrder.title, systemImage: symbolName)
+            }
         }
         .buttonStyle(.plain)
         .pageActionLabel()

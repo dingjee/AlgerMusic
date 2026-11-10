@@ -37,13 +37,21 @@ struct ExploreView: View {
                 PageActionButton(
                     title: "刷新",
                     systemImage: "arrow.clockwise",
-                    isEnabled: model.isLoggedIn,
+                    // **匿名也能按**：公开推荐歌单不需要登录。
+                    isEnabled: true,
                     help: "刷新推荐内容"
                 ) {
                     Task {
-                        await model.refreshHome()
-                        // 顶部刷新 **确实强制重刷** 推荐雷达。
-                        await model.loadExploreRadar(force: true)
+                        // **并行独立任务**：公开歌单匿名可用，不等登录 / 私人 FM。
+                        async let recommended: Void = model.refreshRecommendedPlaylists()
+                        if model.isLoggedIn {
+                            async let home: Void = model.refreshHome()
+                            // 顶部刷新 **确实强制重刷** 推荐雷达。
+                            async let radar: Void = model.loadExploreRadar(force: true)
+                            _ = await (recommended, home, radar)
+                        } else {
+                            _ = await recommended
+                        }
                     }
                 }
             }
@@ -62,6 +70,7 @@ struct ExploreView: View {
                         sectionView(section)
                     }
                     radarSection
+                    recommendedPlaylistsSection
                     if model.homeSections.isEmpty && !model.isLoadingHome {
                         EmptyStateView(
                             systemImage: "antenna.radiowaves.left.and.right",
@@ -78,6 +87,12 @@ struct ExploreView: View {
         .task(id: model.radarSeedPlaylist?.id) {
             // 推荐雷达 **独立加载**：不阻塞上面的分区，也不影响它们的成败。
             await model.loadExploreRadar()
+        }
+        .task {
+            // 公开推荐歌单 **独立加载**（匿名可用：不等待登录 / 私人 FM）。
+            if model.recommendedPlaylists.isEmpty && model.recommendedPlaylistsError == nil {
+                await model.refreshRecommendedPlaylists()
+            }
         }
     }
 
@@ -121,7 +136,7 @@ struct ExploreView: View {
                     .foregroundStyle(.secondary)
             } else {
                 let visible = visibleItems(section, items: section.items)
-                cardRow(visible)
+                cardRow(visible, onPlayAt: playHandler(for: section, visible: visible))
                 if visible.count < section.items.count || isExpanded(section.id) {
                     Button {
                         toggleExpanded(section.id)
@@ -136,6 +151,31 @@ struct ExploreView: View {
                     .foregroundStyle(.secondary)
                 }
             }
+        }
+    }
+
+    /// 分区的播放入口（**私人 FM 走自己的入口**：从被点击的那张卡片开始播整批）。
+    ///
+    /// - `visible` 永远是 `items` 的 **前缀**（短预览）→ 卡片下标与整批一致；
+    /// - 队列里放的是 **整批真实歌曲**，起点是被点击的那一张。
+    private func playHandler(
+        for section: HomeSection,
+        visible: [HomeSection.Item]
+    ) -> ((Int) -> Void)? {
+        switch section.id {
+        case "fm":
+            let songs = remoteSongs(section.items)
+            return { index in model.playPersonalFM(songs, startAt: index) }
+        default:
+            return nil
+        }
+    }
+
+    /// 分区里的网络曲目（**私人 FM 分区用它**取当前批真实歌曲）。
+    private func remoteSongs(_ items: [HomeSection.Item]) -> [RemoteSong] {
+        items.compactMap { item in
+            if case .remote(let song) = item { return song }
+            return nil
         }
     }
 
@@ -170,24 +210,78 @@ struct ExploreView: View {
     /// 推荐雷达分区（**取代旧的「歌单电台」**）。
     ///
     /// - 种子来自 **所选网络歌单** 的曲目（仍可自选歌单）；
+    /// - 标题用 **所选歌单的真实标题**（「“XX”的推荐雷达」）；
     /// - 播放走 **统一入口**：从被点击的那张卡片开始，队列只含本次展示的结果。
     @ViewBuilder
     private var radarSection: some View {
         let state = model.radarState(for: ExploreView.radarScope)
         VStack(alignment: .leading, spacing: 10) {
             HStack(alignment: .firstTextBaseline, spacing: 10) {
-                SectionHeader(title: "推荐雷达")
+                SectionHeader(title: radarTitle)
                 radioPicker
             }
-            Text("只推荐不在这个歌单、你的资料库或本应用播放记录里的相似歌曲。")
-                .font(.caption)
-                .foregroundStyle(.secondary)
             RadarStatusView(state: state) {
                 Task { await model.loadExploreRadar(force: true) }
             }
             if !state.items.isEmpty {
                 cardRow(state.items.map { .remote($0) }) { index in
-                    model.playRadar(state.items, startAt: index)
+                    model.playRadar(state.items, startAt: index, title: radarSourceTitle)
+                }
+            }
+        }
+    }
+
+    /// 雷达分区的标题（**带所选歌单的真实标题**）。
+    private var radarTitle: String {
+        let title = radarSourceTitle
+        return title.isEmpty ? "推荐雷达" : "“\(title)”的推荐雷达"
+    }
+
+    /// 雷达的来源歌单标题（**空 = 没有可用的歌单**）。
+    private var radarSourceTitle: String {
+        model.radarSeedPlaylist?.name ?? ""
+    }
+
+    // MARK: - 公开推荐歌单
+
+    /// 公开推荐歌单分区（**真实公开歌单**：封面 / 标题 / 网友昵称）。
+    ///
+    /// - **独立加载与重试**：不等登录、不等私人 FM；
+    /// - **只读**：点击打开已有的只读网络歌单详情（能播放、能用雷达）；
+    /// - **不写进收藏、不持久化**。
+    @ViewBuilder
+    private var recommendedPlaylistsSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            SectionHeader(title: "推荐歌单")
+            if model.isLoadingRecommendedPlaylists && model.recommendedPlaylists.isEmpty {
+                ProgressView("正在加载推荐歌单…")
+                    .font(.callout)
+                    .padding(.vertical, 6)
+            } else if let error = model.recommendedPlaylistsError {
+                VStack(alignment: .leading, spacing: 6) {
+                    SectionErrorView(message: error)
+                    Button("重试") {
+                        Task { await model.refreshRecommendedPlaylists() }
+                    }
+                    .buttonStyle(.link)
+                }
+            } else if model.recommendedPlaylists.isEmpty {
+                Text("暂时没有推荐歌单")
+                    .font(.callout)
+                    .foregroundStyle(.secondary)
+            } else {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 14) {
+                        ForEach(model.recommendedPlaylists) { playlist in
+                            RecommendedPlaylistCard(
+                                playlist: playlist,
+                                client: model.environment.client
+                            ) {
+                                model.openRecommendedPlaylist(playlist)
+                            }
+                        }
+                    }
+                    .padding(.vertical, 2)
                 }
             }
         }
@@ -271,12 +365,13 @@ struct ExploreView: View {
 /// 首页卡片（一首曲目，**所有分区统一这套卡片**）。
 ///
 /// **交互**：
-/// - 单击卡片 → 高亮选中；
-/// - 双击卡片 → 播放；
-/// - 右下角独立播放按钮 → 播放（当前播放时显示喇叭）。
+/// - **点封面 = 播放**（与右下角播放按钮同一个入口：普通曲目 / 雷达 / 私人 FM）；
+/// - **封面左上角的「+」**：单击加入 **临时播放**，右键 / 长按弹出菜单选歌单；
+///   **独立命中**（不会触发封面播放）；
+/// - **标题区域**：单击 = 选中高亮（不是播放）；
+/// - 右下角保留独立播放按钮（正在播放时显示喇叭）。
 ///
-/// **每首只有一个「+」**（共享组件 `AddToPlaylistMenu`）：
-/// 单击加入 **临时播放**，右键 / 长按弹出菜单选择具体歌单。
+/// **每首只有一个「+」**（共享组件 `AddToPlaylistMenu`）。
 private struct HomeTrackCard: View {
     @EnvironmentObject private var model: AppModel
     let item: HomeSection.Item
@@ -288,13 +383,26 @@ private struct HomeTrackCard: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            ZStack(alignment: .bottomTrailing) {
+            ZStack {
+                // **封面**：点它 = 播放（其余位置的单击与播放按钮同一个入口）。
                 HomeArtwork(
                     source: source(for: item),
                     size: 132,
                     cornerRadius: 10,
                     client: client
                 )
+                .contentShape(Rectangle())
+                .onTapGesture { onPlay() }
+
+                // **左上角「+」**：复用列表同一实现（单击进临时队列 / 右键出菜单）。
+                AddToPlaylistMenu(result: result) {
+                    Image(systemName: "plus")
+                }
+                // 封面之上的浅色圆底，保证在深色封面上也看得清。
+                .background(.regularMaterial, in: Circle())
+                .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
                 Button(action: onPlay) {
                     Image(systemName: isCurrent ? "speaker.wave.2.fill" : "play.fill")
                         .font(.system(size: 13, weight: .bold))
@@ -305,27 +413,19 @@ private struct HomeTrackCard: View {
                 .buttonStyle(.plain)
                 .help(isCurrent ? "正在播放" : "播放")
                 .padding(8)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .bottomTrailing)
             }
 
             Text(titleText)
                 .font(.callout.weight(isSelected ? .semibold : .medium))
                 .lineLimit(1)
+                // **标题区域**：单击只选中，不触发播放。
+                .contentShape(Rectangle())
+                .onTapGesture { onSelect() }
             Text(subtitleText)
                 .font(.caption)
                 .foregroundStyle(.secondary)
                 .lineLimit(1)
-
-            HStack {
-                Spacer(minLength: 0)
-                // 共享组件：单击加入临时播放，右键 / 长按选择歌单。
-                AddToPlaylistMenu(result: result) {
-                    Image(systemName: "plus")
-                        .font(.system(size: 11, weight: .semibold))
-                        .foregroundStyle(.secondary)
-                        .frame(width: 22, height: 22)
-                }
-                .help("加入临时播放；右键或长按选择歌单")
-            }
         }
         .frame(width: 132, alignment: .leading)
         .padding(6)
@@ -339,10 +439,6 @@ private struct HomeTrackCard: View {
                 .allowsHitTesting(false)
         }
         .contentShape(Rectangle())
-        // 单击选中、双击播放：**先声明双击**，单击识别器会等双击判定，
-        // 不会出现双击时先触发两次单击。
-        .onTapGesture(count: 2) { onPlay() }
-        .onTapGesture { onSelect() }
     }
 
     private var subtitleText: String {
@@ -379,6 +475,51 @@ private struct HomeTrackCard: View {
         case .local(let track):
             return .local(path: track.path)
         }
+    }
+}
+
+// MARK: - 公开推荐歌单卡片
+
+/// 公开推荐歌单卡片（**封面 / 标题 / 网友昵称**）。
+///
+/// - 点击 **打开已有的只读网络歌单详情**（与收藏的网络歌单同一条路）；
+/// - **没有「+」**：封面是歌单，不是单曲（不提供单曲加入）。
+struct RecommendedPlaylistCard: View {
+    let playlist: RemotePlaylist
+    let client: BridgeClient?
+    let onOpen: () -> Void
+
+    var body: some View {
+        Button(action: onOpen) {
+            VStack(alignment: .leading, spacing: 8) {
+                HomeArtwork(
+                    source: .remote(URL(string: playlist.coverImgUrl)),
+                    size: 132,
+                    cornerRadius: 10,
+                    client: client
+                )
+                Text(playlist.name)
+                    .font(.callout.weight(.medium))
+                    .lineLimit(1)
+                Text(creatorText)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .lineLimit(1)
+            }
+            .frame(width: 132, alignment: .leading)
+            .padding(6)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .help("打开歌单「\(playlist.name)」")
+        .accessibilityLabel(playlist.name)
+        .accessibilityValue(creatorText)
+    }
+
+    /// 网友昵称（**上游没给就如实说明**）。
+    private var creatorText: String {
+        let name = playlist.creatorName.trimmingCharacters(in: .whitespacesAndNewlines)
+        return name.isEmpty ? "未知网友" : name
     }
 }
 

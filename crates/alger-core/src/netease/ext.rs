@@ -8,6 +8,7 @@
 //! - `artist_top_song`         → weapi `/api/artist/top/song`
 //! - `artist_albums`           → weapi `/api/artist/albums/{id}`
 //! - `artist_detail`           → weapi `/api/artist/v3/detail`
+//! - `top_playlists`           → weapi `/api/playlist/list`（公开热门歌单，**匿名可用**）
 //!
 //! 上游结构解析全部防御式：字段缺失返回空集合，不 panic；
 //! 真实返回结构以只读联调验证为准（见 DEV 执行状态）。
@@ -16,7 +17,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::{json, Value};
 
 use super::client::{ApiError, NeteaseClient};
-use super::models::{Artist, Song};
+use super::models::{Artist, Playlist, Song};
 
 impl NeteaseClient {
     /// 私人 FM：返回一槽推荐歌曲。
@@ -235,6 +236,37 @@ impl NeteaseClient {
         })
     }
 
+    /// 公开热门歌单（`/api/playlist/list`）。
+    ///
+    /// 上游参数：`{cat, order, limit, offset, total}`（参考
+    /// `NeteaseCloudMusicApiEnhanced/api-enhanced/module/top_playlist.js`）。
+    ///
+    /// - **匿名可用**：不需要登录（探索页的「推荐歌单」分区用）；
+    /// - `playlists` 缺失 / 不是数组 → **明确的解析错误**（绝不伪装成
+    ///   「没有歌单」）；合法空数组 → 空列表；
+    /// - **坏 ID 剔除**（`id <= 0`）、**重复 ID 按首次出现去重**（顺序稳定）。
+    pub async fn top_playlists(
+        &self,
+        category: &str,
+        order: &str,
+        limit: u32,
+        offset: u32,
+    ) -> Result<Vec<Playlist>, ApiError> {
+        let res = self
+            .weapi(
+                "/api/playlist/list",
+                json!({
+                    "cat": category,
+                    "order": order,
+                    "limit": limit,
+                    "offset": offset,
+                    "total": true,
+                }),
+            )
+            .await?;
+        parse_top_playlists(&res)
+    }
+
     /// 歌词以外的单曲详情（含 MV / 关联信息时的防御式封装）。
     pub async fn song_detail(&self, id: i64) -> Result<Song, ApiError> {
         let songs = self.song_details(&[id]).await?;
@@ -300,6 +332,43 @@ pub(crate) fn parse_similar_songs(res: &Value) -> Result<Vec<Song>, ApiError> {
         )));
     }
     Ok(songs)
+}
+
+/// 解析公开歌单响应（**结构错误与合法空数组严格区分**）。
+///
+/// - `playlists` 顶层优先，其次 `data.playlists`（不同上游变体）；
+/// - 都没有 → `ApiError::Decode`（结构不识别，不是「没有歌单」）；
+/// - 是数组但为空 → 合法空结果；
+/// - **坏 ID**（`id <= 0`）按条目剔除、**重复 ID** 按首次出现去重
+///   （顺序稳定，上游偶发重复不会产生重复条目）。
+pub(crate) fn parse_top_playlists(res: &Value) -> Result<Vec<Playlist>, ApiError> {
+    let raw = res
+        .get("playlists")
+        .or_else(|| res.get("data").and_then(|d| d.get("playlists")));
+    let raw = match raw {
+        Some(value) => value,
+        None => {
+            return Err(ApiError::Decode(
+                "公开歌单响应缺少 playlists 字段（结构不识别）".into(),
+            ))
+        }
+    };
+    let arr = raw.as_array().ok_or_else(|| {
+        ApiError::Decode("公开歌单响应的 playlists 不是数组（结构不识别）".into())
+    })?;
+    let mut seen = std::collections::HashSet::new();
+    let mut out = Vec::with_capacity(arr.len());
+    for value in arr {
+        let playlist = Playlist::from_value(value);
+        if playlist.id <= 0 {
+            continue;
+        }
+        if !seen.insert(playlist.id) {
+            continue;
+        }
+        out.push(playlist);
+    }
+    Ok(out)
 }
 
 /// 已关注艺人（侧栏 / 首页「关注艺人的新作」数据源）。
@@ -873,5 +942,107 @@ mod tests {
         let songs = parse_similar_songs(&res).unwrap();
         assert_eq!(songs.len(), 1);
         assert_eq!(songs[0].id, 200);
+    }
+
+    // ---------- 公开热门歌单（playlist/list） ----------
+
+    fn public_playlist(id: i64, name: &str, nickname: &str) -> Value {
+        json!({
+            "id": id,
+            "name": name,
+            "coverImgUrl": "https://p1.music.126.net/cover.jpg",
+            "trackCount": 30,
+            "creator": { "userId": 9, "nickname": nickname, "avatarUrl": "" },
+        })
+    }
+
+    /// 正常响应：顶层 `playlists` → 解析出歌单（标题与网友昵称都在）。
+    #[test]
+    fn top_playlists_parses_top_level_array() {
+        let res = json!({
+            "code": 200,
+            "total": 2,
+            "playlists": [
+                public_playlist(101, "热门歌单一", "网友甲"),
+                public_playlist(102, "热门歌单二", "网友乙"),
+            ],
+        });
+        let playlists = parse_top_playlists(&res).unwrap();
+        assert_eq!(playlists.len(), 2);
+        assert_eq!(playlists[0].id, 101);
+        assert_eq!(playlists[0].name, "热门歌单一");
+        assert_eq!(playlists[0].creator.nickname, "网友甲");
+        assert_eq!(playlists[0].track_count, 30);
+        assert_eq!(playlists[1].creator.nickname, "网友乙");
+    }
+
+    /// **合法空数组** ≠ 错误：上游真的没有公开歌单时必须返回空列表。
+    #[test]
+    fn top_playlists_accepts_legal_empty_array() {
+        let res = json!({ "code": 200, "playlists": [] });
+        let playlists = parse_top_playlists(&res).unwrap();
+        assert!(playlists.is_empty());
+    }
+
+    /// **结构错误** ≠ 空结果：缺 `playlists` / 类型不对 → 明确解析错误。
+    #[test]
+    fn top_playlists_rejects_malformed_structure() {
+        let err = parse_top_playlists(&json!({ "code": 200 })).unwrap_err();
+        assert!(
+            matches!(err, ApiError::Decode(_)),
+            "缺 playlists：{:?}",
+            err
+        );
+
+        let err = parse_top_playlists(&json!({ "code": 200, "playlists": null })).unwrap_err();
+        assert!(
+            matches!(err, ApiError::Decode(_)),
+            "playlists=null：{:?}",
+            err
+        );
+
+        let err = parse_top_playlists(&json!({ "code": 200, "playlists": "x" })).unwrap_err();
+        assert!(
+            matches!(err, ApiError::Decode(_)),
+            "playlists 非数组：{:?}",
+            err
+        );
+    }
+
+    /// 坏 ID 剔除 + 重复 ID 按首次出现去重（顺序稳定）。
+    #[test]
+    fn top_playlists_filters_bad_ids_and_dedupes() {
+        let res = json!({
+            "code": 200,
+            "playlists": [
+                public_playlist(101, "甲", "n1"),
+                public_playlist(0, "坏 ID", "n2"),
+                public_playlist(101, "甲重复", "n3"),
+                { "name": "没有 ID" },
+                public_playlist(102, "乙", "n4"),
+            ],
+        });
+        let playlists = parse_top_playlists(&res).unwrap();
+        assert_eq!(
+            playlists.len(),
+            2,
+            "坏 ID 剔除、重复去重：{:?}",
+            playlists.len()
+        );
+        assert_eq!(playlists[0].id, 101);
+        assert_eq!(playlists[0].name, "甲", "保留首次出现");
+        assert_eq!(playlists[1].id, 102);
+    }
+
+    /// 兼容 `data.playlists` 变体。
+    #[test]
+    fn top_playlists_accepts_data_wrapped_array() {
+        let res = json!({
+            "code": 200,
+            "data": { "playlists": [ public_playlist(200, "丙", "n5") ] },
+        });
+        let playlists = parse_top_playlists(&res).unwrap();
+        assert_eq!(playlists.len(), 1);
+        assert_eq!(playlists[0].id, 200);
     }
 }

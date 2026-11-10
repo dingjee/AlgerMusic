@@ -843,6 +843,26 @@ async fn dispatch(b: &Bridge, method: &str, p: &Value) -> Res {
                 json!({ "songs": songs.iter().map(|s| serde_json::to_value(s).unwrap_or(Value::Null)).collect::<Vec<_>>() }),
             )
         }
+        "net.topPlaylists" => {
+            // 公开热门歌单（`/api/playlist/list`）：**只读、匿名可用**。
+            // 上游参数：`{cat, order, limit, offset, total}`。
+            let limit = p
+                .get("limit")
+                .and_then(|l| l.as_u64())
+                .unwrap_or(12)
+                .min(50) as u32;
+            let offset = p.get("offset").and_then(|l| l.as_u64()).unwrap_or(0) as u32;
+            let category = p.get("cat").and_then(|c| c.as_str()).unwrap_or("全部");
+            let order = p.get("order").and_then(|o| o.as_str()).unwrap_or("hot");
+            let playlists = b
+                .client
+                .top_playlists(category, order, limit, offset)
+                .await
+                .map_err(BridgeError::from)?;
+            Ok(json!({
+                "playlists": playlists.iter().map(|pl| serde_json::to_value(pl).unwrap_or(Value::Null)).collect::<Vec<_>>(),
+            }))
+        }
         "net.artistSublist" => {
             // 分页取全（去重 / 终止保护 / 错误上抛），不再固定 100,0 一页
             let list = b

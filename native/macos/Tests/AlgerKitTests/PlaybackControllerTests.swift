@@ -267,4 +267,109 @@ final class PlaybackControllerTests: XCTestCase {
         guard let item = player.currentPlayerItem else { return }
         NotificationCenter.default.post(name: .AVPlayerItemDidPlayToEndTime, object: item)
     }
+
+    // MARK: - 队列耗尽（私人 FM 续批的接入点）
+
+    /// 自然播完（队列末尾）→ 触发 **队列耗尽** 回调。
+    func testQueueExhaustionFiresWhenQueueEnds() async throws {
+        let workspace = try TempWorkspace("player-exhaust-natural")
+        let audio = try TestAudio.writeWAV(to: workspace.url("a.wav"), seconds: 0.5)
+
+        let resolver = FakePlaybackResolver()
+        resolver.setHandler { _ in PlaybackSource(url: audio, isLocal: false, note: "网络") }
+        let player = PlayerController(resolver: resolver)
+        var exhausted = 0
+        player.onQueueExhausted = { exhausted += 1 }
+
+        await player.replaceQueue([makeRemoteItem()])
+        _ = await waitUntil { player.isPlaying }
+        postEnd(of: player)
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(exhausted, 1, "队列末尾自然播完必须报一次耗尽")
+    }
+
+    /// 队列 **中间** 播完 → 不得报耗尽（下一首照旧接着播）。
+    func testQueueExhaustionNotFiredMidQueue() async throws {
+        let workspace = try TempWorkspace("player-exhaust-mid")
+        let audio = try TestAudio.writeWAV(to: workspace.url("a.wav"), seconds: 0.5)
+
+        let resolver = FakePlaybackResolver()
+        resolver.setHandler { _ in PlaybackSource(url: audio, isLocal: false, note: "网络") }
+        let player = PlayerController(resolver: resolver)
+        var exhausted = 0
+        player.onQueueExhausted = { exhausted += 1 }
+
+        await player.replaceQueue([makeRemoteItem(id: 1), makeRemoteItem(id: 2)])
+        _ = await waitUntil { player.isPlaying }
+        postEnd(of: player)
+        try? await Task.sleep(nanoseconds: 300_000_000)
+        XCTAssertEqual(exhausted, 0, "队列还有下一首时不得报耗尽")
+        XCTAssertEqual(player.current?.id, "netease:2", "应当自动接着播下一首")
+    }
+
+    /// 手动「下一首」走到队列末尾 → 报耗尽（私人 FM 用它取下一批）。
+    func testManualNextAtEndReportsExhaustion() async throws {
+        let workspace = try TempWorkspace("player-exhaust-next")
+        let audio = try TestAudio.writeWAV(to: workspace.url("a.wav"), seconds: 0.5)
+
+        let resolver = FakePlaybackResolver()
+        resolver.setHandler { _ in PlaybackSource(url: audio, isLocal: false, note: "网络") }
+        let player = PlayerController(resolver: resolver)
+        var exhausted = 0
+        player.onQueueExhausted = { exhausted += 1 }
+
+        await player.replaceQueue([makeRemoteItem()])
+        _ = await waitUntil { player.isPlaying }
+        player.next()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+        XCTAssertEqual(exhausted, 1, "手动下一首到末尾必须报耗尽")
+    }
+
+    /// 私人 FM 模式：随机轮播完时 **先报耗尽**（不重开一轮普通随机播放）。
+    func testExternalContinuationReportsExhaustionBeforeRestartingShuffleRound() async throws {
+        let workspace = try TempWorkspace("player-exhaust-shuffle")
+        let audio = try TestAudio.writeWAV(to: workspace.url("a.wav"), seconds: 0.5)
+
+        let resolver = FakePlaybackResolver()
+        resolver.setHandler { _ in PlaybackSource(url: audio, isLocal: false, note: "网络") }
+        let player = PlayerController(resolver: resolver)
+        player.setPlaybackOrder(.shuffle, randomSeed: 42)
+        var exhausted = 0
+        player.onQueueExhausted = { exhausted += 1 }
+        player.continuesOnExhaustion = true
+
+        await player.replaceQueue([makeRemoteItem(id: 1), makeRemoteItem(id: 2)])
+        _ = await waitUntil { player.isPlaying }
+        // 走完这一轮（两首各播一次）。
+        player.next()
+        _ = await waitUntil { player.current?.id == "netease:2" }
+        player.next()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertEqual(exhausted, 1, "随机轮播完必须报耗尽（由私人 FM 续批）")
+        XCTAssertEqual(player.current?.id, "netease:2", "不得重开一轮普通随机播放")
+    }
+
+    /// 普通播放（不接管续播）：随机轮播完 **重开一轮**，不报耗尽。
+    func testNormalPlaybackRestartsShuffleRoundWithoutExhaustion() async throws {
+        let workspace = try TempWorkspace("player-exhaust-shuffle-normal")
+        let audio = try TestAudio.writeWAV(to: workspace.url("a.wav"), seconds: 0.5)
+
+        let resolver = FakePlaybackResolver()
+        resolver.setHandler { _ in PlaybackSource(url: audio, isLocal: false, note: "网络") }
+        let player = PlayerController(resolver: resolver)
+        player.setPlaybackOrder(.shuffle, randomSeed: 42)
+        var exhausted = 0
+        player.onQueueExhausted = { exhausted += 1 }
+
+        await player.replaceQueue([makeRemoteItem(id: 1), makeRemoteItem(id: 2)])
+        _ = await waitUntil { player.isPlaying }
+        player.next()
+        _ = await waitUntil { player.current?.id == "netease:2" }
+        player.next()
+        try? await Task.sleep(nanoseconds: 200_000_000)
+
+        XCTAssertEqual(exhausted, 0, "普通播放不报耗尽（行为不变）")
+        XCTAssertNotNil(player.current, "普通随机轮播完会重开一轮")
+    }
 }

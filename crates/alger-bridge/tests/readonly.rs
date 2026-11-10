@@ -187,3 +187,56 @@ fn read_methods_still_routed() {
         "net.account 仍应被 dispatch 识别（不得随写能力一起被删）"
     );
 }
+
+/// 公开推荐歌单（`net.topPlaylists`）**只读且匿名可用** 的探测。
+///
+/// 断言：
+/// 1. 方法 **被 dispatch 识别**（不是 `Unsupported`）；
+/// 2. **不需要登录**（空会话下不是 `NeedLogin`）——匿名可用是产品要求；
+/// 3. 成功时返回的 **只有读出来的歌单数组**（没有任何写语义字段）。
+///
+/// 上游不可达时（`Network` 错误）只断言前两条：既不联网成功，也不假装成功。
+#[test]
+fn public_playlists_probe_is_readonly_and_anonymous() {
+    let mut guard = spawn_bridge("public-playlists");
+    let child = guard.child.as_mut().unwrap();
+    let mut stdin = child.stdin.take().expect("stdin");
+    send(
+        &mut stdin,
+        1,
+        "net.topPlaylists",
+        r#"{"cat":"全部","order":"hot","limit":12,"offset":0}"#,
+    );
+    send(&mut stdin, 2, "app.shutdown", "{}");
+    drop(stdin);
+
+    let lines = read_all(child);
+    let v = response_for(&lines, 1, "net.topPlaylists");
+    if v["ok"].as_bool() == Some(true) {
+        let playlists = v["r"]["playlists"].as_array();
+        assert!(
+            playlists.is_some(),
+            "成功响应必须带 playlists 数组（空数组也是合法结果）：{}",
+            v
+        );
+        for playlist in playlists.unwrap() {
+            assert!(
+                playlist.get("id").and_then(|i| i.as_i64()).unwrap_or(0) > 0,
+                "公开歌单必须有有效 ID：{}",
+                playlist
+            );
+        }
+        return;
+    }
+    let code = v["e"]["code"].as_str().unwrap_or_default();
+    assert_ne!(
+        code, "Unsupported",
+        "net.topPlaylists 必须被 dispatch 识别（只读端点）：{}",
+        v
+    );
+    assert_ne!(
+        code, "NeedLogin",
+        "公开歌单必须匿名可用（不得要求登录）：{}",
+        v
+    );
+}

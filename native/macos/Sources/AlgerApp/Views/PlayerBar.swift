@@ -99,17 +99,17 @@ struct PlayerBar: View {
             }
             .frame(maxWidth: .infinity)
 
-            // 队列入口
+            // 队列入口（**显式访问当前实际队列**：侧栏入口是条件入口）。
             Button {
                 model.selection = .queue
             } label: {
                 Image(systemName: "text.line.first.and.arrowtriangle.forward")
             }
             .buttonStyle(.plain)
-            .help("临时播放")
+            .help(model.queueDisplayTitle)
 
-            // 播放顺序（顺序 ↔ 随机）：与歌单头部是同一个控件。
-            PlaybackOrderButton()
+            // 播放顺序（顺序 ↔ 随机）：与歌单头部是同一个控件，**这里只显示图标**。
+            PlaybackOrderButton(iconOnly: true)
         }
         .padding(.horizontal, 22)
         .frame(height: 68)

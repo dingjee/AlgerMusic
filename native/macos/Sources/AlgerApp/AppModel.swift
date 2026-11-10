@@ -116,23 +116,6 @@ struct HomeSection: Identifiable {
     var error: String?
 }
 
-/// 播放上下文：**当前正在播放的曲目来自哪个歌单**。
-///
-/// 「加号」默认加入这里指向的歌单，而不是当前浏览的页面。
-enum PlaybackContext: Equatable {
-    case none
-    case localPlaylist(String)
-    case remotePlaylist(Int64)
-
-    var title: String {
-        switch self {
-        case .none: return "临时播放"
-        case .localPlaylist(let id): return id
-        case .remotePlaylist(let id): return "网络歌单 \(id)"
-        }
-    }
-}
-
 /// 添加目标（「更改添加目标」用）。
 ///
 /// **只含本地目标**：网络歌单是 **只读** 的，不能作为添加目标。
@@ -209,6 +192,8 @@ struct RadarRequest {
     var scope: String
     /// 内容身份（歌单内容摘要）。
     var contentSignature: String
+    /// **来源歌单的真实标题**（雷达分区标题与队列标题都用它）。
+    var title: String
     /// 种子曲目（已知的网易曲目 ID）。
     var seedSongIDs: [Int64]
     /// 需要解析来源 ID 的本地曲目（**小规模精确搜索**，不写库、不改标签）。
@@ -219,12 +204,14 @@ struct RadarRequest {
     init(
         scope: String,
         contentSignature: String,
+        title: String = "",
         seedSongIDs: [Int64] = [],
         seedLocalTracks: [TrackRecord] = [],
         sourceSongIDs: Set<Int64> = []
     ) {
         self.scope = scope
         self.contentSignature = contentSignature
+        self.title = title
         self.seedSongIDs = seedSongIDs
         self.seedLocalTracks = seedLocalTracks
         self.sourceSongIDs = sourceSongIDs
@@ -290,6 +277,12 @@ final class AppModel: ObservableObject {
     /// 搜索代次：**过期结果直接丢弃**（快速改关键词不会看到旧结果）。
     private var searchGeneration = 0
     private let searchPageSize = 50
+    /// 搜索框聚焦请求（**⌘F** 用：换 token 就是「再聚焦一次」）。
+    @Published private(set) var searchFocusToken = UUID()
+
+    /// 侧栏分组的展开状态（**放在模型里**：播放来源时要自动展开对应分组）。
+    @Published var localSectionExpanded = true
+    @Published var remoteSectionExpanded = true
 
     // MARK: - 账号
 
@@ -311,6 +304,16 @@ final class AppModel: ObservableObject {
     // MARK: - 远程
 
     @Published private(set) var remotePlaylists: [RemotePlaylist] = []
+    /// **临时展示** 的网络歌单（公开推荐歌单的预览行）。
+    ///
+    /// - **不写进收藏、不持久化**：只是当前浏览 / 播放时的一个稳定 ID 行；
+    /// - 读详情与已有网络歌单 **走同一路**（`RemotePlaylistDetailView`）。
+    @Published private(set) var transientRemotePlaylists: [RemotePlaylist] = []
+    /// 探索页的 **公开推荐歌单**（**匿名可用**：不依赖登录）。
+    @Published private(set) var recommendedPlaylists: [RemotePlaylist] = []
+    @Published private(set) var isLoadingRecommendedPlaylists = false
+    /// 公开推荐歌单的具体错误（**可重试**；不吞原因）。
+    @Published private(set) var recommendedPlaylistsError: String?
     @Published private(set) var homeSections: [HomeSection] = []
     @Published private(set) var isLoadingHome = false
     /// 歌单电台选用哪张歌单（可自选）。
@@ -377,8 +380,17 @@ final class AppModel: ObservableObject {
 
     // MARK: - 播放
 
-    /// 当前播放上下文（正在播放的曲目来自哪个歌单）。
+    /// 当前播放上下文（正在播放的曲目来自哪个来源）。
     @Published private(set) var playbackContext: PlaybackContext = .none
+
+    // MARK: - 私人 FM
+
+    /// 私人 FM 会话（**代次 / 去重 / 续批预算 / 并发合并**）。
+    private let fmSession = PersonalFMSession()
+    /// 私人 FM 取批失败原因（**点「下一首」可重试**）。
+    @Published private(set) var fmError: String?
+    /// 取批途中用户按了暂停（**不自动接播**：保护用户的暂停）。
+    private var fmPauseRequested = false
 
     // MARK: - 登录窗口
 
@@ -396,11 +408,47 @@ final class AppModel: ObservableObject {
         player.onCompletedRemotePlay = { [weak self] item in
             self?.recordCompletedRemotePlay(item)
         }
+        // **队列耗尽**：只有私人 FM 会消费（取下一批并自动接播）。
+        player.onQueueExhausted = { [weak self] in
+            self?.handleQueueExhausted()
+        }
+        // 用户主动暂停 → 私人 FM **不自动接播**（保护用户的暂停）。
+        // **暂停标志只针对在途续批**：没有在途请求时不影响 FM。
+        player.onUserPause = { [weak self] in
+            guard let self, self.fmSession.isRequestInFlight else { return }
+            self.fmPauseRequested = true
+        }
         // 恢复 **上次选择的播放顺序**（顺序 / 随机），旧 `native.json` 没有这个
         // 字段时按顺序播放（宽容解码，不会报废旧数据）。
         player.setPlaybackOrder(environment.store.current.settings.playbackOrder)
         forwardPlayerChanges()
+        observeQueueEmptied()
         observeSearchText()
+    }
+
+    /// 队列被清空时：**收束上下文与侧栏选择**（不留失效的选中项）。
+    private func observeQueueEmptied() {
+        player.$queue
+            .sink { [weak self] queue in
+                guard queue.isEmpty else { return }
+                Task { @MainActor [weak self] in
+                    self?.handleQueueEmptied()
+                }
+            }
+            .store(in: &cancellables)
+    }
+
+    /// 队列空了（用户清空 / 队列被替换成空）：
+    /// - 播放上下文回到「无来源」；
+    /// - 侧栏若还选着「临时播放」→ 回到探索（**不留失效选中**）；
+    /// - 私人 FM 的在途响应 **不得接管队列**。
+    private func handleQueueEmptied() {
+        setPlaybackContext(.none)
+        fmSession.beginSession()
+        fmPauseRequested = false
+        if selection == .queue {
+            selection = .home
+        }
     }
 
     /// 把 **播放器** 的状态变化转发给 `AppModel`。
@@ -472,6 +520,7 @@ final class AppModel: ObservableObject {
         await refreshSession()
         refreshLibrary()
         await refreshDownloads()
+        // **公开推荐歌单只在探索页加载**（匿名可用，不在这里串行挡住私人 FM）。
         if isLoggedIn {
             await refreshRemotePlaylists()
             await refreshFollowedArtists()
@@ -498,6 +547,17 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: - 搜索
+
+    /// 请求聚焦搜索框（**⌘F**：换 token 就是「再聚焦一次」）。
+    func focusSearchField() {
+        searchFocusToken = UUID()
+    }
+
+    /// 清空搜索（**侧栏换页时**用：搜索 **不能遮住** 目的页）。
+    func clearSearch() {
+        guard !searchText.isEmpty else { return }
+        searchText = ""
+    }
 
     private func observeSearchText() {
         $searchText
@@ -664,6 +724,9 @@ final class AppModel: ObservableObject {
         radarGenerations[ExploreView.radarScope, default: 0] += 1
         exploreRadarTrackIDs = [:]
         radarStates[ExploreView.radarScope] = RadarState()
+        // **作废在途的私人 FM 取批**（退出后旧响应不得接管队列）。
+        fmSession.beginSession()
+        fmPauseRequested = false
         do {
             let cleared = try await environment.bridge.logout()
             await refreshSession()
@@ -750,6 +813,7 @@ final class AppModel: ObservableObject {
         do {
             try environment.library.deletePlaylist(id: id)
             refreshLibrary()
+            if playbackContext == .localPlaylist(id) { setPlaybackContext(.none) }
             if selection == .localPlaylist(id) { selection = .home }
             banner = .info("歌单已删除（音频文件保留）")
         } catch {
@@ -822,6 +886,26 @@ final class AppModel: ObservableObject {
     }
 
     // MARK: - 首页推荐
+
+    /// 刷新 **公开推荐歌单**（`/api/playlist/list`，**匿名可用**）。
+    ///
+    /// - **独立加载**：不等待登录，也不等待私人 FM；
+    /// - **失败显示具体原因**并可重试（不伪装成「没有歌单」）。
+    func refreshRecommendedPlaylists() async {
+        guard !isLoadingRecommendedPlaylists else { return }
+        isLoadingRecommendedPlaylists = true
+        defer { isLoadingRecommendedPlaylists = false }
+        do {
+            let playlists = try await environment.bridge.topPlaylists(limit: 12, offset: 0)
+            guard !Task.isCancelled else { return }
+            recommendedPlaylists = playlists
+            recommendedPlaylistsError = nil
+        } catch {
+            guard !Task.isCancelled else { return }
+            recommendedPlaylists = []
+            recommendedPlaylistsError = Self.describe(error)
+        }
+    }
 
     /// 读取 **已关注艺人** 列表（分页取全）。
     ///
@@ -1011,6 +1095,8 @@ final class AppModel: ObservableObject {
                 id: playlist.id,
                 ids: ids
             ),
+            // **真实来源标题**（雷达分区标题 / 队列标题都用它）。
+            title: playlist.name,
             seedSongIDs: Array(ids.prefix(RadarService.Limits.maxSeeds)),
             seedLocalTracks: [],
             sourceSongIDs: Set(ids)
@@ -1189,22 +1275,100 @@ final class AppModel: ObservableObject {
     ///
     /// 队列里 **只有** 本次展示的雷达结果（不混入歌单原有曲目）；
     /// 起点行为与普通歌单播放一致（`replaceQueue(items, startAt:)`）。
-    func playRadar(_ songs: [RemoteSong], startAt index: Int) {
+    ///
+    /// - Parameter title: **来源歌单的真实标题**（队列入口与队列页头部显示它）。
+    func playRadar(_ songs: [RemoteSong], startAt index: Int, title: String) {
         let items = RadarService.playbackItems(songs)
         guard !items.isEmpty else { return }
-        playbackContext = .none
+        setPlaybackContext(.radar(title: title))
         Task { await player.replaceQueue(items, startAt: index) }
+    }
+
+    // MARK: - 私人 FM
+
+    /// 播放私人 FM（**从被点击的那张卡片开始**：当前批真实歌曲进队列）。
+    ///
+    /// - 队列入口与队列页头部都显示「私人 FM」；
+    /// - **新会话**：作废之前所有在途取批响应（换卡片 = 重新开始）。
+    func playPersonalFM(_ songs: [RemoteSong], startAt index: Int) {
+        let items = songs.map { PlaybackItem.remote($0) }
+        guard !items.isEmpty else { return }
+        setPlaybackContext(.personalFM)
+        fmError = nil
+        fmPauseRequested = false
+        fmSession.beginSession()
+        fmSession.register(songs)
+        Task { await player.replaceQueue(items, startAt: index) }
+    }
+
+    /// 队列耗尽（**只有私人 FM 消费**）：取下一批并自动接播。
+    private func handleQueueExhausted() {
+        guard case .personalFM = playbackContext else { return }
+        Task { await fetchNextPersonalFMBatch() }
+    }
+
+    /// 取下一批私人 FM（**成功就接播**；空 / 失败不自动重试，由用户点「下一首」）。
+    private func fetchNextPersonalFMBatch() async {
+        guard case .personalFM = playbackContext else { return }
+        // 用户 **清空了队列** → 不再接管（队列空了 = 用户主动清掉）。
+        guard !player.queue.isEmpty else { return }
+        // **一次耗尽只发一个请求**（并发合并）；用户点「下一首」会再发起一次。
+        guard let generation = fmSession.beginRequest() else { return }
+        fmPauseRequested = false
+        // **记住请求发出时的当前队列项**：用户按了「上一首」或在 FM 队列里
+        // 点了别的曲目 → 这批旧结果 **不得抢播**。
+        let anchorEntryID = player.current?.queueEntryId
+        defer { fmSession.endRequest(generation: generation) }
+        do {
+            let songs = try await environment.bridge.personalFM()
+            // **旧会话的响应不得接管队列**（换来源 / 换卡片 / 清空 / 退出登录）。
+            guard fmSession.accepts(generation: generation),
+                  case .personalFM = playbackContext,
+                  !player.queue.isEmpty else { return }
+            // 用户在取批途中换了曲目 → 旧批不抢播。
+            guard player.current?.queueEntryId == anchorEntryID else { return }
+            // 暂停标志 **只针对在途续批**（见 `onUserPause`）。
+            if fmPauseRequested {
+                fmPauseRequested = false
+                fmError = "已暂停，没有自动接播下一批"
+                return
+            }
+            let fresh = fmSession.filter(songs)
+            guard !fresh.isEmpty else {
+                // **空结果 / 全是重复** → 不自动重试（否则会无限请求）。
+                fmError = "没有更多私人 FM 了"
+                return
+            }
+            fmSession.register(fresh)
+            // **成功时清掉上一次的错误**。
+            fmError = nil
+            let items = fresh.map { PlaybackItem.remote($0) }
+            await player.replaceQueue(items, startAt: 0)
+        } catch {
+            guard fmSession.accepts(generation: generation) else { return }
+            fmError = "获取私人 FM 失败：\(Self.describe(error))"
+        }
     }
 
     // MARK: - 播放
 
+    /// 设置播放上下文（**同时更新队列耗尽策略**）。
+    ///
+    /// - 私人 FM：**队列耗尽由外部接管**（取下一批并自动接播，
+    ///   手动「下一首」也先识别耗尽，不重开普通随机轮）；
+    /// - 其他来源：普通行为（随机模式播完一轮会重开一轮）。
+    private func setPlaybackContext(_ context: PlaybackContext) {
+        playbackContext = context
+        player.continuesOnExhaustion = (context == .personalFM)
+    }
+
     func playLocal(_ track: TrackRecord) {
-        playbackContext = .none
+        setPlaybackContext(.none)
         Task { await player.replaceQueue([.local(track)]) }
     }
 
     func playRemote(_ song: RemoteSong) {
-        playbackContext = .none
+        setPlaybackContext(.none)
         Task { await player.replaceQueue([.remote(song)]) }
     }
 
@@ -1221,13 +1385,19 @@ final class AppModel: ObservableObject {
                 origin: .local(path: item.path)
             )
         }
-        playbackContext = .localPlaylist(playlist.id)
+        setPlaybackContext(.localPlaylist(playlist.id))
+        // **开始播放时**选中来源行并展开对应分组（不抢用户后续的浏览）。
+        localSectionExpanded = true
+        selection = .localPlaylist(playlist.id)
         Task { await player.replaceQueue(items, startAt: index) }
     }
 
     /// 从 **网络歌单** 播放（播放上下文 = 该歌单）。
     func playRemotePlaylist(_ playlist: RemotePlaylist, song: RemoteSong) {
-        playbackContext = .remotePlaylist(playlist.id)
+        setPlaybackContext(.remotePlaylist(playlist.id))
+        // **开始播放时**选中来源行并展开对应分组（不抢用户后续的浏览）。
+        remoteSectionExpanded = true
+        selection = .remotePlaylist(playlist.id)
         Task { await player.replaceQueue([.remote(song)]) }
     }
 
@@ -1236,6 +1406,83 @@ final class AppModel: ObservableObject {
         case .local(let track): playLocal(track)
         case .remote(let song): playRemote(song)
         }
+    }
+
+    // MARK: - 队列入口（侧栏）与来源行
+
+    /// 侧栏的队列入口（**条件入口**：没有队列就不显示）。
+    ///
+    /// - **播放本地 / 网络歌单时隐藏**：队列就是那张歌单本身，
+    ///   播放器条上的队列图标仍可显式访问 **当前实际队列**；
+    /// - 雷达 → 「“XX”的推荐雷达」；私人 FM → 「私人 FM」；
+    /// - 普通临时队列 → 「临时播放」。
+    var queueEntry: String? {
+        guard !player.queue.isEmpty else { return nil }
+        switch playbackContext {
+        case .localPlaylist, .remotePlaylist:
+            return nil
+        case .none:
+            return "临时播放"
+        case .radar(let title):
+            return title.isEmpty ? "推荐雷达" : "“\(title)”的推荐雷达"
+        case .personalFM:
+            return "私人 FM"
+        }
+    }
+
+    /// 队列页 / 队列入口的标题（**按来源显示真实名字**）。
+    var queueDisplayTitle: String {
+        switch playbackContext {
+        case .none:
+            return "临时播放"
+        case .localPlaylist(let id):
+            return localPlaylists.first { $0.id == id }?.title ?? "本地歌单"
+        case .remotePlaylist(let id):
+            return remotePlaylist(withID: id)?.name ?? "网络歌单"
+        case .radar(let title):
+            return title.isEmpty ? "推荐雷达" : "“\(title)”的推荐雷达"
+        case .personalFM:
+            return "私人 FM"
+        }
+    }
+
+    /// 正在播放的网络歌单。
+    private var currentRemoteSourceID: Int64? {
+        switch playbackContext {
+        case .remotePlaylist(let id): return id
+        default: return nil
+        }
+    }
+
+    /// 网络歌单查找（**收藏的 + 临时预览的**）。
+    func remotePlaylist(withID id: Int64) -> RemotePlaylist? {
+        remotePlaylists.first { $0.id == id } ?? transientRemotePlaylists.first { $0.id == id }
+    }
+
+    /// 侧栏「网络歌单」组显示的行。
+    ///
+    /// - 正常：**收藏的网络歌单**（+ 公开推荐歌单的临时预览行）；
+    /// - 隐藏偏好：**只**显示当前来源行（正在播放 / 正在预览的那一行），
+    ///   **设置值不变**。
+    var sidebarRemotePlaylists: [RemotePlaylist] {
+        var previewID: Int64?
+        if case .remotePlaylist(let id) = selection { previewID = id }
+        var rows = environment.store.current.settings.hideRemotePlaylists ? [] : remotePlaylists
+        for id in [currentRemoteSourceID, previewID].compactMap({ $0 }) where !rows.contains(where: { $0.id == id }) {
+            if let playlist = remotePlaylist(withID: id) { rows.append(playlist) }
+        }
+        return rows
+    }
+
+    /// 打开公开推荐歌单（**只读详情**：与已有网络歌单同一条路）。
+    ///
+    /// - **不写进收藏、不持久化**：只留一个稳定 ID 的临时行。
+    func openRecommendedPlaylist(_ playlist: RemotePlaylist) {
+        let playingID = currentRemoteSourceID
+        transientRemotePlaylists.removeAll { $0.id == playlist.id || $0.id != playingID }
+        transientRemotePlaylists.append(playlist)
+        remoteSectionExpanded = true
+        selection = .remotePlaylist(playlist.id)
     }
 
     func enqueueResult(_ result: SearchResult) {
@@ -1318,11 +1565,12 @@ final class AppModel: ObservableObject {
     ///
     /// 网络歌单是 **只读** 的，不能作为添加目标 → 播放网络歌单时
     /// 「+」默认落到 **临时播放**（网络曲目仍可加入本地歌单）。
+    /// **推荐雷达 / 私人 FM** 同样是只读来源 → 也落到临时播放。
     var defaultAdditionTarget: AdditionTarget {
         switch playbackContext {
         case .none: return .queue
         case .localPlaylist(let id): return .localPlaylist(id)
-        case .remotePlaylist: return .queue
+        case .remotePlaylist, .radar, .personalFM: return .queue
         }
     }
 

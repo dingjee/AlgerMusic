@@ -343,12 +343,15 @@ struct LocalSongList: View {
 ///
 /// - 顶部是 **共享标题组件**（与专辑 / 艺人 / 下载同一套布局）；
 /// - 副标题统一「共N个」；
-/// - 右侧操作：**排序** 与 **扫描**（图标 + 文字，与其它页一致）；
-/// - 排序 **只影响显示**：不改数据、不改稳定 ID。
+/// - 右侧操作：**排序** 与 **刷新**（图标 + 文字，与其它页一致）；
+/// - 排序 **只影响显示**：不改数据、不改稳定 ID；
+/// - 列表 **逐行选中**（按绝对路径）：单击正文即选中，不触发播放。
 struct LocalSongsView: View {
     @EnvironmentObject private var model: AppModel
     @State private var deletingTrack: TrackRecord?
     @State private var sort: SongSort = .name
+    /// 当前选中的曲目（**稳定 ID = 绝对路径**：排序后选中不丢）。
+    @State private var selectedPath: String?
 
     /// 按当前排序显示的歌曲（**只改顺序**）。
     private var sortedSongs: [TrackRecord] {
@@ -391,10 +394,10 @@ struct LocalSongsView: View {
                         }
                     }
                     PageActionButton(
-                        title: "扫描",
-                        systemImage: "arrow.triangle.2.circlepath",
+                        title: "刷新",
+                        systemImage: "arrow.clockwise",
                         isEnabled: !model.isScanning,
-                        help: "扫描音乐目录"
+                        help: "重新扫描音乐目录"
                     ) {
                         Task { await model.scanLibrary() }
                     }
@@ -410,7 +413,8 @@ struct LocalSongsView: View {
                     Task { await model.scanLibrary() }
                 }
             } else {
-                List {
+                // **原生选中语义**：单击正文即选中（**按绝对路径**：排序后不丢）。
+                List(selection: $selectedPath) {
                     ForEach(sortedSongs, id: \.path) { track in
                         TrackRowView(
                             title: trackTitle(track),
@@ -435,6 +439,7 @@ struct LocalSongsView: View {
                                 deletingTrack = track
                             }
                         }
+                        .tag(track.path)
                     }
                 }
                 .listStyle(.inset)

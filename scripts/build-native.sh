@@ -427,6 +427,12 @@ verify_bundle() {
   [ -x "${app}/Contents/MacOS/${BUNDLE_NAME}" ] || fail "应用可执行文件缺失或不可执行：Contents/MacOS/${BUNDLE_NAME}"
   [ -x "${app}/Contents/Resources/alger-bridge" ] || fail "包内桥接缺失或不可执行：Contents/Resources/alger-bridge"
   [ -f "${app}/Contents/Resources/icon.icns" ] || fail "缺少图标：Contents/Resources/icon.icns"
+  # Icon Composer 资源（现代系统图标来源）：**有 CFBundleIconName 就必须有 Assets.car**。
+  icon_name="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleIconName' "${plist}" 2>/dev/null || true)"
+  if [ -n "${icon_name}" ]; then
+    [ -f "${app}/Contents/Resources/Assets.car" ] \
+      || fail "Info.plist 声明了 CFBundleIconName=${icon_name}，但缺少 Contents/Resources/Assets.car"
+  fi
 
   codesign --verify --deep --strict "${app}" || fail "代码签名校验失败"
 
@@ -573,6 +579,26 @@ done
 cp "${ICON}" "${APP}/Contents/Resources/icon.icns"
 
 cp "${ROOT}/native/macos/Resources/Info.plist" "${APP}/Contents/Info.plist"
+
+# macOS 26 起由原生图标资产绘制外轮廓。较旧的系统继续使用包内 ICNS。
+ICON_SOURCE="${ROOT}/native/macos/Resources/AlgerIcon.icon"
+if [ -d "${ICON_SOURCE}" ] && ACTOOL_BIN="$(xcrun --find actool 2>/dev/null)"; then
+  ICON_STAGE="${STAGE}/icon"
+  mkdir -p "${ICON_STAGE}"
+  if "${ACTOOL_BIN}" --compile "${ICON_STAGE}" \
+      --platform macosx --minimum-deployment-target 13.0 --app-icon AlgerIcon \
+      --output-partial-info-plist "${ICON_STAGE}/partial-info.plist" \
+      "${ICON_SOURCE}" > "${LOG_DIR}/icon-build.log" 2>&1 \
+     && [ -s "${ICON_STAGE}/Assets.car" ]; then
+    cp "${ICON_STAGE}/Assets.car" "${APP}/Contents/Resources/Assets.car"
+    /usr/libexec/PlistBuddy -c "Add :CFBundleIconName string AlgerIcon" "${APP}/Contents/Info.plist"
+    log "图标：已编译 Icon Composer 资源（Assets.car）"
+  else
+    log "图标：Icon Composer 编译失败，使用 ICNS（见 ${LOG_DIR}/icon-build.log）"
+  fi
+else
+  log "图标：当前工具链使用 ICNS"
+fi
 
 VERSION="$(sed -n 's/.*"version"[[:space:]]*:[[:space:]]*"\([^"]*\)".*/\1/p' "${ROOT}/package.json" | head -n 1)"
 [ -n "${VERSION}" ] || fail "无法从 package.json 读取版本号"

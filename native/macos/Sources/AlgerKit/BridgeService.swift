@@ -732,6 +732,19 @@ public final class BridgeService {
         return JSONValue.array(response["songs"]).compactMap { RemoteSong.parse($0) }
     }
 
+    /// 公开热门歌单（`/api/playlist/list`，**只读、匿名可用**）。
+    ///
+    /// - 探索页的「推荐歌单」分区用（**不依赖登录**）；
+    /// - **合法空列表** → 返回空数组；**结构错误** → 桥接返回 `Decode` 错误，
+    ///   这里原样上抛（**绝不**变成「没有歌单」）。
+    public func topPlaylists(limit: Int = 12, offset: Int = 0) async throws -> [RemotePlaylist] {
+        let response = try await client.callDictionary(
+            "net.topPlaylists",
+            params: ["cat": "全部", "order": "hot", "limit": limit, "offset": offset]
+        )
+        return JSONValue.array(response["playlists"]).compactMap { RemotePlaylist.parse($0) }
+    }
+
     public func intelligenceList(playlistId: Int64, songId: Int64 = 0) async throws -> [RemoteSong] {
         let response = try await client.callDictionary(
             "net.intelligenceList",

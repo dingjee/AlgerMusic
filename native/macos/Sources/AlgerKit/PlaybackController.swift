@@ -136,6 +136,21 @@ public final class PlayerController: ObservableObject {
     ///
     /// 本地文件播放、网络曲目本地优先命中本地文件的播放都 **不回调**。
     public var onCompletedRemotePlay: ((PlaybackItem) -> Void)?
+    /// 队列耗尽回调（**队列末尾且没有下一首**时触发一次）。
+    ///
+    /// - 普通顺序 / 随机播放：**不消费**这个回调（行为完全不变）；
+    /// - 私人 FM：**消费**它（取下一批并自动接播）。
+    public var onQueueExhausted: (() -> Void)?
+    /// 队列耗尽时 **由外部接管续播**（私人 FM：取下一批并接播）。
+    ///
+    /// - true：`next()` 走到队列末尾时 **先报耗尽**，
+    ///   **不**重开一轮普通随机播放（FM 的下一批由外部接上）；
+    /// - false（默认）：普通行为（随机模式重开一轮）。
+    public var continuesOnExhaustion: Bool = false
+    /// 用户主动暂停回调（**「暂停」按钮 / `pause()`**）。
+    ///
+    /// 私人 FM 用它保护用户的暂停：**取批途中用户按了暂停，就不自动接播**。
+    public var onUserPause: (() -> Void)?
 
     // MARK: - 内部
 
@@ -320,6 +335,7 @@ public final class PlayerController: ObservableObject {
         if isPlaying {
             player.pause()
             isPlaying = false
+            onUserPause?()
         } else {
             guard current != nil else { return }
             player.play()
@@ -331,6 +347,7 @@ public final class PlayerController: ObservableObject {
     public func pause() {
         player.pause()
         isPlaying = false
+        onUserPause?()
     }
 
     /// 继续。
@@ -344,14 +361,25 @@ public final class PlayerController: ObservableObject {
     ///
     /// - 顺序模式：下一项；
     /// - 随机模式：随机序列里 **下一首没播过** 的（**一轮里每首各播一次**；
-    ///   本轮播完后再按「下一首」会 **重新开一轮**）。
+    ///   本轮播完后再按「下一首」会 **重新开一轮**）；
+    /// - 队列末尾：**停止并通知队列耗尽**（私人 FM 用它取下一批；
+    ///   普通播放不消费这个回调，行为不变）。
     public func next() {
         guard let index = currentIndex else {
             stopPlayback()
             return
         }
+        // **外部接管续播时（私人 FM）先识别耗尽**：
+        // 队列末尾先通知外部取下一批，**不重开普通随机轮**。
+        if continuesOnExhaustion,
+           nextIndex(after: index, restartRoundWhenFinished: false) == nil {
+            stopPlayback()
+            onQueueExhausted?()
+            return
+        }
         guard let following = nextIndex(after: index, restartRoundWhenFinished: true) else {
             stopPlayback()
+            onQueueExhausted?()
             return
         }
         Task { await play(at: following) }
@@ -678,6 +706,8 @@ public final class PlayerController: ObservableObject {
             }
         } else {
             currentTime = duration
+            // **队列耗尽**：私人 FM 用它取下一批并自动接播（普通播放不消费）。
+            onQueueExhausted?()
         }
     }
 

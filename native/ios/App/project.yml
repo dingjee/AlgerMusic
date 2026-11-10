@@ -12,7 +12,12 @@ packages:
 
 settings:
   base:
-    DEVELOPMENT_TEAM: 9SVGN86A32
+    # 签名团队：**MFMGY838LG**（JI DING）。
+    # - Xcode 当前登录的账号属于该付费团队（isFreeProvisioningTeam=0）；
+    # - 钥匙串里已有该团队的 "Apple Distribution" 证书；
+    # - 9SVGN86A32（组织团队）在本机 Xcode **没有账号**，用它会报
+    #   "No Account for Team" / "No Team Found in Archive"。
+    DEVELOPMENT_TEAM: MFMGY838LG
     SWIFT_VERSION: "5.9"
     CURRENT_PROJECT_VERSION: "5.2.0"
     MARKETING_VERSION: "5.2.0"
@@ -51,6 +56,12 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.alger.music.ios.minimal
         CODE_SIGN_STYLE: Automatic
+        # **不写死签名身份**：xcodegen 默认写 "iPhone Developer"
+        # （= Apple Development），会让归档匹配到**开发**描述文件，导出
+        # App Store 时报 "No profiles for ... (iOS App Store)"；留空则由
+        # Xcode 按动作自动选（Archive → Apple Distribution + App Store 描述文件）。
+        # 手动写 "Apple Distribution" 也会报 "conflicting provisioning settings"。
+        CODE_SIGN_IDENTITY: ""
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon

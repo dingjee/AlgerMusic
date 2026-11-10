@@ -44,6 +44,8 @@ command -v xcodegen >/dev/null 2>&1 || {
 
 # 构建号：App Store Connect 要求递增；默认用时间戳（合法整数）。
 BUILD_NUMBER="${BUILD_NUMBER:-$(date +%y%m%d%H%M)}"
+# 签名团队：与 project.yml 的 DEVELOPMENT_TEAM 一致（导出选项要用）。
+TEAM_ID="${TEAM_ID:-MFMGY838LG}"
 APP_DIR="$ROOT/native/ios/App"
 PROJECT="$APP_DIR/AlgerMusicMinimal.xcodeproj"
 ARCHIVE_DIR="$ROOT/.artifacts/ios-archive"
@@ -112,7 +114,7 @@ cat > "$EXPORT_PLIST" <<EOF
     <key>method</key>
     <string>app-store-connect</string>
     <key>teamID</key>
-    <string>9SVGN86A32</string>
+    <string>${TEAM_ID}</string>
     <key>signingStyle</key>
     <string>automatic</string>
     <key>stripSwiftSymbols</key>
@@ -129,6 +131,7 @@ xcodebuild -exportArchive \
   -archivePath "$ARCHIVE_DIR/AlgerMusicMinimal.xcarchive" \
   -exportPath "$EXPORT_DIR" \
   -exportOptionsPlist "$EXPORT_PLIST" \
+  -allowProvisioningUpdates \
   > "$LOG.export" 2>&1
 code=$?
 set -e

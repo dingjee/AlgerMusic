@@ -54,6 +54,7 @@ docs/private/
 .kiro
 CLAUDE.md
 AGENTS.md
+!native/ios/AGENTS.md
 .sisyphus
 .worktrees
 

@@ -35,7 +35,7 @@ cd "$ROOT"
 
 FULL_XCODE="/Applications/Xcode.app/Contents/Developer"
 [ -x "$FULL_XCODE/usr/bin/xcodebuild" ] || {
-  echo "错误：找不到完整 Xcode（$FULL_XCODE）" >&2
+  echo "错误：找不到完整 Xcode（${FULL_XCODE}）" >&2
   exit 1
 }
 # 外层进程也必须固定完整 Xcode：下面的 xcrun（取 SDKROOT）、exportArchive、

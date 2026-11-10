@@ -94,3 +94,8 @@ cargo test --manifest-path crates/alger-ffi/Cargo.toml
   `FFIClient.swift` 的 `deliver`）；漏 free 会泄漏，重复 free 会崩。
 - **C 回调没有 context 指针**：响应行靠 **进程级唯一 id** 路由（`FFIRegistry`）；
   事件行无 id，广播给全部客户端。
+- **xcodegen 生成的 Info.plist 是静态文件**：版本号必须写成
+  `$(MARKETING_VERSION)` / `$(CURRENT_PROJECT_VERSION)`——写死会让
+  `xcodebuild CURRENT_PROJECT_VERSION=…` 覆盖失效（TestFlight 构建号被判重复）。
+- **归档产物在 `.artifacts/ios-archive/`**（`clean.sh` 会清掉）；`.ipa` 在
+  `.artifacts/ios-export/`。未签名包（`--no-sign`）只能本地看，**不能上传**。

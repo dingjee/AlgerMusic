@@ -31,6 +31,11 @@ targets:
       path: Info.plist
       properties:
         CFBundleDisplayName: 网易音乐
+        # **版本号必须引用构建变量**：Info.plist 是静态文件，写死会让
+        # xcodebuild 的 CURRENT_PROJECT_VERSION 覆盖失效（TestFlight 构建号
+        # 会被判重复）。
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
         UILaunchScreen: {}
         # 后台播放（妈妈版的核心体验：锁屏也能听）
         UIBackgroundModes:
@@ -49,6 +54,7 @@ targets:
         TARGETED_DEVICE_FAMILY: "1"
         ENABLE_USER_SCRIPT_SANDBOXING: NO
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        MARKETING_VERSION: "5.2.0"
         # 构建号默认 1；TestFlight 构建由脚本用 CURRENT_PROJECT_VERSION=… 覆盖
         #（App Store Connect 要求构建号递增）。
         CURRENT_PROJECT_VERSION: "1"

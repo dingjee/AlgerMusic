@@ -4,6 +4,7 @@
 # 用法：
 #   sh scripts/build-ios-testflight.sh              # archive + 导出 .ipa
 #   sh scripts/build-ios-testflight.sh --upload     # 导出后自动上传到 App Store Connect
+#   sh scripts/build-ios-testflight.sh --no-sign    # 只 archive 且 **不签名**（本地验证用，不可上传）
 #   BUILD_NUMBER=42 sh scripts/build-ios-testflight.sh --upload   # 指定构建号
 #
 # 上传需要 App Store Connect API Key（环境变量）：
@@ -23,8 +24,10 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 cd "$ROOT"
 
 UPLOAD=0
+NO_SIGN=0
 for arg in "$@"; do
   [ "$arg" = "--upload" ] && UPLOAD=1
+  [ "$arg" = "--no-sign" ] && NO_SIGN=1
 done
 
 FULL_XCODE="/Applications/Xcode.app/Contents/Developer"
@@ -56,6 +59,30 @@ xcodegen generate --spec "$APP_DIR/project.yml" --project "$APP_DIR"
 
 echo ">> 3/4 archive（Release，build ${BUILD_NUMBER}）"
 rm -rf "$ARCHIVE_DIR/AlgerMusicMinimal.xcarchive"
+if [ "$NO_SIGN" -eq 1 ]; then
+  # 未签名：只验证 Release 构建能过（**不可上传**）。
+  set +e
+  xcodebuild archive \
+    -project "$PROJECT" \
+    -scheme AlgerMusicMinimal \
+    -configuration Release \
+    -destination 'generic/platform=iOS' \
+    -archivePath "$ARCHIVE_DIR/AlgerMusicMinimal.xcarchive" \
+    CURRENT_PROJECT_VERSION="$BUILD_NUMBER" \
+    CODE_SIGNING_ALLOWED=NO \
+    > "$LOG" 2>&1
+  code=$?
+  set -e
+  if [ "$code" -ne 0 ]; then
+    echo "archive 失败（退出码 ${code}）：" >&2
+    grep -E "error:" "$LOG" | sort -u | head -12 >&2
+    echo "完整日志：${LOG}" >&2
+    exit "$code"
+  fi
+  echo ">> 未签名归档就绪：${ARCHIVE_DIR}/AlgerMusicMinimal.xcarchive"
+  echo ">> （未签名包不可上传；登录 Team 账号后重跑不带 --no-sign 即可导出 .ipa）"
+  exit 0
+fi
 set +e
 xcodebuild archive \
   -project "$PROJECT" \
